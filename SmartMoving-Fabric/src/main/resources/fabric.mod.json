@@ -10,7 +10,7 @@
   {
   "entrypoints": {
     "main": [ "com.yourpkg.smartmoving.SmartMovingMod" ],
-    "client": [ "com.yourpkg.smartmoving.client.ClientNetworking" ]  // 있으면 그대로
+    "client": [ "com.yourpkg.smartmoving.client.ClientInit" ]  // 있으면 그대로
   }
 },
   "depends": {

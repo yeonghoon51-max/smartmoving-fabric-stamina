@@ -3,7 +3,6 @@
   "package": "com.yourpkg.smartmoving.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ServerPlayerEntityAccessor",
     "PlayerEntityStamina",
     "LivingEntityTravelMixin",
     "PlayerEntityDimensionsMixin"

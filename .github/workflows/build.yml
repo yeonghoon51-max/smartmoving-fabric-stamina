@@ -1,4 +1,4 @@
-name: Build (Fabric Stage2)
+name: Build (Fabric)
 
 on:
   push:
@@ -20,24 +20,41 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.10.2   # Gradle 8.14.3 대신 8.10.2 고정
+          gradle-version: 8.10.2
 
+      # ▷ 프로젝트 위치를 자동으로 판단해서 빌드합니다.
       - name: Build
-        working-directory: SmartMoving-Fabric   # 실제 폴더명 확인!
+        shell: bash
         run: |
-          gradle --version
-          gradle build remapJar
+          set -e
+          # 루트에 gradle 빌드가 있으면 그걸 우선 사용
+          if [[ -f build.gradle || -f build.gradle.kts || -f settings.gradle || -f settings.gradle.kts ]]; then
+            echo "Building at repository root"
+            gradle --version
+            gradle build remapJar
+          else
+            # 없으면 하위 폴더에서 Gradle 프로젝트를 찾아서 첫 번째를 빌드
+            CANDIDATE=$(find . -maxdepth 2 -type f \( -name 'build.gradle' -o -name 'build.gradle.kts' \) | head -n 1)
+            if [[ -n "$CANDIDATE" ]]; then
+              PROJ_DIR=$(dirname "$CANDIDATE")
+              echo "Building at $PROJ_DIR"
+              gradle --version
+              gradle -p "$PROJ_DIR" build remapJar
+            else
+              echo "❌ Gradle project not found"
+              exit 1
+            fi
+          fi
 
-      - name: List build outputs
+      - name: List remapped jars
+        shell: bash
         run: |
-          ls -al SmartMoving-Fabric/build/libs || true
+          echo "Searching for *-remapped.jar under $PWD"
+          find . -path '*/build/libs/*-remapped.jar' -type f -print || true
 
       - name: Upload remapped JAR
         uses: actions/upload-artifact@v4
         with:
           name: smartmoving-fabric-jar
-          path: SmartMoving-Fabric/build/libs/*-remapped.jar
-
-
-
-
+          # ▷ 어떤 폴더명이든 빌드 산출물을 잡도록 와일드카드 사용
+          path: '**/build/libs/*-remapped.jar'

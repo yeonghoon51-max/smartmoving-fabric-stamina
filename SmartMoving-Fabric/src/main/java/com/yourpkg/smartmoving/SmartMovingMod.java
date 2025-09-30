@@ -1,0 +1,1 @@
+package com.yourpkg.smartmoving; public class SmartMovingMod {}

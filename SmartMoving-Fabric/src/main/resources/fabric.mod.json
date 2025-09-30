@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "smartmoving",
+  "version": "${version}",
+  "name": "SmartMoving (Fabric) – Stage2",
+  "description": "Server-authoritative stamina + simple pose/hitbox + climb/swim boost + gauge HUD",
+  "authors": ["you"],
+  "license": "MIT",
+  "icon": "assets/smartmoving/icon.png",
+  "entrypoints": {
+    "main": [ "com.yourpkg.smartmoving.SmartMovingMod" ]
+  },
+  "depends": {
+    "minecraft": ">=1.21.6 <=1.21.8",
+    "fabricloader": ">=0.16.0",
+    "fabric-api": ">=0.100.0"
+  },
+  "mixins": [
+    "smartmoving.mixins.json"
+  ],
+  "environment": "*"
+}

@@ -23,6 +23,7 @@ jobs:
           gradle-version: 8.14.3
 
       - name: Build
+        working-directory: SmartMoving-Fabric
         run: |
           gradle --version
           gradle build remapJar
@@ -31,4 +32,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: smartmoving-fabric-stage2-jar
-          path: build/libs/*-remapped.jar
+          path: SmartMoving-Fabric-Stage2/build/libs/*-remapped.jar
+

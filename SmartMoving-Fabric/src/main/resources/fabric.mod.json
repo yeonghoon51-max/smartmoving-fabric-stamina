@@ -7,9 +7,12 @@
   "authors": ["you"],
   "license": "MIT",
   "icon": "assets/smartmoving/icon.png",
+  {
   "entrypoints": {
-    "main": [ "com.yourpkg.smartmoving.SmartMovingMod" ]
-  },
+    "main": [ "com.yourpkg.smartmoving.SmartMovingMod" ],
+    "client": [ "com.yourpkg.smartmoving.client.ClientNetworking" ]  // 있으면 그대로
+  }
+},
   "depends": {
     "minecraft": ">=1.21.6 <=1.21.8",
     "fabricloader": ">=0.16.0",

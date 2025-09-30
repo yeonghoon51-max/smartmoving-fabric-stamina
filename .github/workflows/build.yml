@@ -20,10 +20,10 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.14.3
+          gradle-version: 8.10.2   # Gradle 8.14.3 대신 8.10.2 고정
 
       - name: Build
-        working-directory: SmartMoving-Fabric
+        working-directory: SmartMoving-Fabric   # 실제 폴더명 확인!
         run: |
           gradle --version
           gradle build remapJar
@@ -31,6 +31,7 @@ jobs:
       - name: Upload remapped JAR
         uses: actions/upload-artifact@v4
         with:
-          name: smartmoving-fabric-stage2-jar
-          path: SmartMoving-Fabric-Stage2/build/libs/*-remapped.jar
+          name: smartmoving-fabric-jar
+          path: SmartMoving-Fabric/build/libs/*-remapped.jar
+
 

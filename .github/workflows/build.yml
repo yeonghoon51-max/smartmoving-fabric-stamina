@@ -17,44 +17,48 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Setup Gradle
+      - name: Setup Gradle (8.10.2)
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.10.2
 
-      # ▷ 프로젝트 위치를 자동으로 판단해서 빌드합니다.
-      - name: Build
+      - name: Build (auto-detect project location)
         shell: bash
         run: |
-          set -e
-          # 루트에 gradle 빌드가 있으면 그걸 우선 사용
-          if [[ -f build.gradle || -f build.gradle.kts || -f settings.gradle || -f settings.gradle.kts ]]; then
-            echo "Building at repository root"
-            gradle --version
-            gradle build remapJar
-          else
-            # 없으면 하위 폴더에서 Gradle 프로젝트를 찾아서 첫 번째를 빌드
-            CANDIDATE=$(find . -maxdepth 2 -type f \( -name 'build.gradle' -o -name 'build.gradle.kts' \) | head -n 1)
-            if [[ -n "$CANDIDATE" ]]; then
-              PROJ_DIR=$(dirname "$CANDIDATE")
-              echo "Building at $PROJ_DIR"
-              gradle --version
-              gradle -p "$PROJ_DIR" build remapJar
-            else
-              echo "❌ Gradle project not found"
-              exit 1
-            fi
+          set -euo pipefail
+
+          # Pick gradle wrapper if present
+          GRADLE_CMD="gradle"
+          if [[ -x "./gradlew" ]]; then
+            GRADLE_CMD="./gradlew"
           fi
 
-      - name: List remapped jars
+          # Find project dir
+          if [[ -f build.gradle || -f build.gradle.kts || -f settings.gradle || -f settings.gradle.kts ]]; then
+            PROJ_DIR="."
+          else
+            CANDIDATE="$(find . -maxdepth 2 -type f \( -name 'build.gradle' -o -name 'build.gradle.kts' \) | head -n 1)"
+            if [[ -z "${CANDIDATE}" ]]; then
+              echo "❌ Gradle project not found in repository."
+              exit 1
+            fi
+            PROJ_DIR="$(dirname "${CANDIDATE}")"
+          fi
+
+          echo "➡ Using project dir: ${PROJ_DIR}"
+          "${GRADLE_CMD}" -p "${PROJ_DIR}" --version
+          "${GRADLE_CMD}" -p "${PROJ_DIR}" build remapJar
+
+      - name: List built jars (debug)
         shell: bash
         run: |
-          echo "Searching for *-remapped.jar under $PWD"
-          find . -path '*/build/libs/*-remapped.jar' -type f -print || true
+          echo "Workspace: $PWD"
+          find . -type f -path '*/build/libs/*' -print || true
 
-      - name: Upload remapped JAR
+      - name: Upload remapped JAR (and fallback all jars)
         uses: actions/upload-artifact@v4
         with:
-          name: smartmoving-fabric-jar
-          # ▷ 어떤 폴더명이든 빌드 산출물을 잡도록 와일드카드 사용
-          path: '**/build/libs/*-remapped.jar'
+          name: smartmoving-fabric-jars
+          path: |
+            **/build/libs/*-remapped.jar
+            **/build/libs/*.jar

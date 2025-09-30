@@ -15,6 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-}
 
 rootProject.name = "SmartMoving-Fabric" // 원하는 이름으로

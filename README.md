@@ -1,0 +1,1 @@
+# smartmoving-fabric-stamina

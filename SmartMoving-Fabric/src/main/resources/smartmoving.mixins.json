@@ -2,11 +2,7 @@
   "required": true,
   "package": "com.yourpkg.smartmoving.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [
-    "PlayerEntityStamina",
-    "LivingEntityTravelMixin",
-    "PlayerEntityDimensionsMixin"
-  ],
+  "mixins": [],
   "client": [
     "MinecraftClientMixin",
     "InGameHudMixin"

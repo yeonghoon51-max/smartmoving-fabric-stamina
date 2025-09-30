@@ -7,10 +7,19 @@ group = project.maven_group
 version = project.mod_version
 
 repositories {
-    mavenCentral()
+    // Fabric / Loom
     maven { url = "https://maven.fabricmc.net/" }
-    maven { url = "https://modmaven.dev" }   // ← 추가: Fabric API가 이 레포에 올라옵니다
+
+    // ★ Mojang 공식 라이브러리 (authlib 등)
+    maven { url = "https://libraries.minecraft.net/" }
+
+    // Fabric API가 올라오는 곳 (일부 버전)
+    maven { url = "https://modmaven.dev" }
+
+    // 마지막에 Central
+    mavenCentral()
 }
+
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"

@@ -28,10 +28,16 @@ jobs:
           gradle --version
           gradle build remapJar
 
+      - name: List build outputs
+        run: |
+          ls -al SmartMoving-Fabric/build/libs || true
+
       - name: Upload remapped JAR
         uses: actions/upload-artifact@v4
         with:
           name: smartmoving-fabric-jar
           path: SmartMoving-Fabric/build/libs/*-remapped.jar
+
+
 
 

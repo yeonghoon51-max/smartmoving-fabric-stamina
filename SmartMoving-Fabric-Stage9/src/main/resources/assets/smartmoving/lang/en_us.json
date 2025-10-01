@@ -1,0 +1,11 @@
+{
+  "key.smartmoving.grab": "Grab",
+  "key.smartmoving.config": "SmartMoving Config",
+  "category.smartmoving": "SmartMoving",
+  "screen.smartmoving.title": "SmartMoving Options",
+  "screen.smartmoving.jumpChargeRate": "Jump Charge / tick",
+  "screen.smartmoving.jumpBoost": "Jump Boost (max)",
+  "screen.smartmoving.grabDrain": "Grab Energy Drain / tick",
+  "screen.smartmoving.grabRegen": "Grab Energy Regen / tick",
+  "screen.smartmoving.done": "Done"
+}

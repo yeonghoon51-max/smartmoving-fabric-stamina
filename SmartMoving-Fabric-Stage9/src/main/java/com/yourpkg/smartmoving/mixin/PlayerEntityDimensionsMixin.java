@@ -10,6 +10,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(PlayerEntity.class)
 public abstract class PlayerEntityDimensionsMixin {
-    @Inject(method = "getDimensions", at = @At("HEAD"), cancellable = true)
+    @Inject(
+        method = "getDimensions(Lnet/minecraft/entity/EntityPose;)Lnet/minecraft/entity/EntityDimensions;",
+        at = @At("HEAD"),
+        cancellable = true
+    )
     private void getDimensions(EntityPose pose, CallbackInfoReturnable<EntityDimensions> cir) { }
 }

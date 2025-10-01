@@ -1,33 +1,35 @@
 package com.yourpkg.smartmoving.network;
 
+import com.yourpkg.smartmoving.network.payload.ActionPayload;
+import com.yourpkg.smartmoving.network.payload.SyncPayload;
 import com.yourpkg.smartmoving.state.PlayerContext;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 
 public class ServerNetworking {
+
     public static void register() {
-        ServerPlayNetworking.registerGlobalReceiver(Channels.ACTION, (server, player, handler, buf, responseSender) -> {
-            byte action = buf.readByte();
-            server.execute(() -> handleAction(player, action));
+        // Codec 등록
+        PayloadTypeRegistry.playC2S().register(ActionPayload.ID, ActionPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(SyncPayload.ID,   SyncPayload.CODEC);
+
+        // C2S 액션 수신(그랩 on/off)
+        ServerPlayNetworking.registerGlobalReceiver(ActionPayload.ID, (payload, context) -> {
+            ServerPlayerEntity player = context.player();
+            player.server.execute(() -> {
+                if (!(player instanceof PlayerContext.Holder h)) return;
+                PlayerContext ctx = h.smartmoving$getContext();
+                byte a = payload.actionId();
+                if (a == 1) ctx.grabbing = true;
+                else if (a == 2) ctx.grabbing = false;
+                sync(player, ctx);
+            });
         });
     }
 
     public static void sync(ServerPlayerEntity player, PlayerContext ctx) {
-        PacketByteBuf buf = new PacketByteBuf(io.netty.buffer.Unpooled.buffer());
-        buf.writeFloat(ctx.jumpCharge);
-        buf.writeFloat(ctx.grabEnergy);
-        buf.writeBoolean(ctx.grabbing);
-        buf.writeBoolean(ctx.crawling);
-        ServerPlayNetworking.send(player, Channels.SYNC, buf);
-    }
-
-    // 1=grab down, 2=grab up
-    private static void handleAction(ServerPlayerEntity player, byte action) {
-        if (!(player instanceof PlayerContext.Holder holder)) return;
-        PlayerContext ctx = holder.smartmoving$getContext();
-        if (action == 1) ctx.grabbing = true;
-        else if (action == 2) ctx.grabbing = false;
-        sync(player, ctx);
+        ServerPlayNetworking.send(player,
+                new SyncPayload(ctx.jumpCharge, ctx.grabEnergy, ctx.grabbing, ctx.crawling));
     }
 }

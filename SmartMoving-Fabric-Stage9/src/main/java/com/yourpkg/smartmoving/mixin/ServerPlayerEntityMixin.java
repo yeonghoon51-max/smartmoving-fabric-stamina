@@ -18,15 +18,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ServerPlayerEntityMixin extends Entity implements PlayerContext.Holder {
     @Unique private PlayerContext ctx = new PlayerContext();
     @Unique private float lastJC = -1f, lastGE = -1f;
-    public ServerPlayerEntityMixin(EntityType<?> t, ServerWorld w){ super(t,w); }
-    @Override public PlayerContext smartmoving$getContext(){ return ctx; }
 
-    @Inject(method="writeCustomDataToNbt", at=@At("HEAD"))
+    public ServerPlayerEntityMixin(EntityType<?> type, ServerWorld world) { super(type, world); }
+    @Override public PlayerContext smartmoving$getContext() { return ctx; }
+
+    @Inject(method="writeCustomDataToNbt(Lnet/minecraft/nbt/NbtCompound;)V", at=@At("HEAD"))
     private void save(NbtCompound n, CallbackInfo ci){ n.put("SmartMoving", ctx.toNbt()); }
-    @Inject(method="readCustomDataFromNbt", at=@At("HEAD"))
-    private void load(NbtCompound n, CallbackInfo ci){ if(n.contains("SmartMoving")) ctx.fromNbt(n.getCompound("SmartMoving")); }
 
-    @Inject(method="tick", at=@At("TAIL"))
+    @Inject(method="readCustomDataFromNbt(Lnet/minecraft/nbt/NbtCompound;)V", at=@At("HEAD"))
+    private void load(NbtCompound n, CallbackInfo ci){
+        if(n.contains("SmartMoving")) ctx.fromNbt(n.getCompound("SmartMoving"));
+    }
+
+    @Inject(method="tick()V", at=@At("TAIL"))
     private void tick(CallbackInfo ci){
         ServerPlayerEntity self=(ServerPlayerEntity)(Object)this;
 
@@ -39,7 +43,7 @@ public abstract class ServerPlayerEntityMixin extends Entity implements PlayerCo
 
         // grab energy
         if (ctx.grabbing) ctx.grabEnergy = Math.max(0f, ctx.grabEnergy - SmartMovingMod.CONFIG.grabDrainPerTick);
-        else ctx.grabEnergy = Math.min(100f, ctx.grabEnergy + SmartMovingMod.CONFIG.grabRegenPerTick);
+        else              ctx.grabEnergy = Math.min(100f, ctx.grabEnergy + SmartMovingMod.CONFIG.grabRegenPerTick);
 
         if (ctx.jumpCharge!=lastJC || ctx.grabEnergy!=lastGE){
             ServerNetworking.sync(self, ctx);

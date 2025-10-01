@@ -1,29 +1,30 @@
 package com.yourpkg.smartmoving.client.net;
 
 import com.yourpkg.smartmoving.client.ui.ClientState;
-import com.yourpkg.smartmoving.network.Channels;
+import com.yourpkg.smartmoving.network.payload.ActionPayload;
+import com.yourpkg.smartmoving.network.payload.SyncPayload;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.network.PacketByteBuf;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 
 public class ClientNetworking {
     public static void register() {
-        ClientPlayNetworking.registerGlobalReceiver(Channels.SYNC, (client, handler, buf, responseSender) -> {
-            float jumpCharge = buf.readFloat();
-            float grabEnergy = buf.readFloat();
-            boolean grabbing = buf.readBoolean();
-            boolean crawling = buf.readBoolean();
-            client.execute(() -> {
-                ClientState.jumpCharge = jumpCharge;
-                ClientState.grabEnergy = grabEnergy;
-                ClientState.grabbing = grabbing;
-                ClientState.crawling = crawling;
+        // Codec 등록
+        PayloadTypeRegistry.playS2C().register(SyncPayload.ID, SyncPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(ActionPayload.ID, ActionPayload.CODEC);
+
+        // S2C 동기화 수신
+        ClientPlayNetworking.registerGlobalReceiver(SyncPayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
+                ClientState.jumpCharge = payload.jumpCharge();
+                ClientState.grabEnergy = payload.grabEnergy();
+                ClientState.grabbing   = payload.grabbing();
+                ClientState.crawling   = payload.crawling();
             });
         });
     }
 
+    /** 1 = grab down, 2 = grab up */
     public static void sendAction(byte actionId) {
-        PacketByteBuf buf = new PacketByteBuf(io.netty.buffer.Unpooled.buffer());
-        buf.writeByte(actionId);
-        ClientPlayNetworking.send(Channels.ACTION, buf);
+        ClientPlayNetworking.send(new ActionPayload(actionId));
     }
 }

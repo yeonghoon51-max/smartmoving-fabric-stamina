@@ -4,11 +4,11 @@ import net.minecraft.nbt.NbtCompound;
 
 /** Server-authoritative player state for SmartMoving. */
 public class PlayerContext {
-    // 공개 필드(다른 Mixin에서 바로 접근하도록) — 필요 시 getter/setter로 바꿔도 됨
-    public float jumpCharge = 0f;   // 0..100 (파란 화살표)
-    public float grabEnergy = 100f; // 0..100 (번개)
-    public boolean grabbing = false;
-    public boolean crawling = false;
+    // 공개 필드(다른 mixin에서 바로 접근)
+    public float  jumpCharge = 0f;    // 0..100 (파란 화살표)
+    public float  grabEnergy = 100f;  // 0..100 (번개)
+    public boolean grabbing  = false;
+    public boolean crawling  = false;
 
     public NbtCompound toNbt() {
         var n = new NbtCompound();
@@ -26,7 +26,7 @@ public class PlayerContext {
         if (n.contains("crawling"))   this.crawling   = n.getBoolean("crawling");
     }
 
-    /** Implement this on the server player via mixin to expose the context. */
+    /** Implement on the server player via mixin to expose the context. */
     public interface Holder {
         PlayerContext smartmoving$getContext();
     }

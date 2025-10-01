@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(PlayerEntity.class)
 public abstract class PlayerJumpMixin {
-    @Inject(method = "jump", at = @At("HEAD"))
+    @Inject(method = "jump()V", at = @At("HEAD"))
     private void onJump(CallbackInfo ci) {
         PlayerEntity self = (PlayerEntity)(Object)this;
         if (!(self instanceof PlayerContext.Holder h)) return;
@@ -21,7 +21,7 @@ public abstract class PlayerJumpMixin {
             double boost = (charge / 100.0) * SmartMovingMod.CONFIG.jumpBoostMax;
             var v = self.getVelocity();
             self.setVelocity(v.x, v.y + boost, v.z);
-            ctx.jumpCharge = 0f; // consume charge on jump
+            ctx.jumpCharge = 0f; // consume
         }
     }
 }

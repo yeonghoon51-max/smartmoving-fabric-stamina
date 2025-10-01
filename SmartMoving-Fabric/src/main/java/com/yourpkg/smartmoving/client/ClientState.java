@@ -1,1 +1,0 @@
-package com.yourpkg.smartmoving.client; public class ClientState {}

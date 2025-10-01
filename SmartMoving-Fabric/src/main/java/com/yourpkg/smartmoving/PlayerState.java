@@ -1,1 +1,0 @@
-package com.yourpkg.smartmoving; public class PlayerState {}

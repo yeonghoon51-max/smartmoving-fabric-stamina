@@ -5,7 +5,7 @@ import com.yourpkg.smartmoving.network.ServerNetworking;
 import com.yourpkg.smartmoving.state.PlayerContext;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.*;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,25 +23,26 @@ public abstract class ServerPlayerEntityMixin extends Entity implements PlayerCo
     @Override public PlayerContext smartmoving$getContext() { return ctx; }
 
     @Inject(method="writeCustomDataToNbt(Lnet/minecraft/nbt/NbtCompound;)V", at=@At("HEAD"))
-    private void save(NbtCompound n, CallbackInfo ci){ n.put("SmartMoving", ctx.toNbt()); }
+    private void save(NbtCompound n, CallbackInfo ci){
+        n.put("SmartMoving", ctx.toNbt());
+    }
 
     @Inject(method="readCustomDataFromNbt(Lnet/minecraft/nbt/NbtCompound;)V", at=@At("HEAD"))
     private void load(NbtCompound n, CallbackInfo ci){
-        if(n.contains("SmartMoving")) ctx.fromNbt(n.getCompound("SmartMoving"));
+        NbtElement el = n.get("SmartMoving");
+        if (el instanceof NbtCompound sm) ctx.fromNbt(sm);
     }
 
     @Inject(method="tick()V", at=@At("TAIL"))
     private void tick(CallbackInfo ci){
         ServerPlayerEntity self=(ServerPlayerEntity)(Object)this;
 
-        // crouch charge
         if (self.isOnGround() && self.isSneaking()) {
             ctx.jumpCharge = Math.min(100f, ctx.jumpCharge + SmartMovingMod.CONFIG.jumpChargePerTick);
         } else if (!self.isOnGround() && ctx.jumpCharge > 0f) {
             ctx.jumpCharge = Math.max(0f, ctx.jumpCharge - 0.15f);
         }
 
-        // grab energy
         if (ctx.grabbing) ctx.grabEnergy = Math.max(0f, ctx.grabEnergy - SmartMovingMod.CONFIG.grabDrainPerTick);
         else              ctx.grabEnergy = Math.min(100f, ctx.grabEnergy + SmartMovingMod.CONFIG.grabRegenPerTick);
 

@@ -2,17 +2,17 @@ package com.yourpkg.smartmoving.mixin;
 
 import com.yourpkg.smartmoving.SmartMovingMod;
 import com.yourpkg.smartmoving.state.PlayerContext;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(PlayerEntity.class)
+@Mixin(LivingEntity.class)
 public abstract class PlayerJumpMixin {
     @Inject(method = "jump()V", at = @At("HEAD"))
     private void onJump(CallbackInfo ci) {
-        PlayerEntity self = (PlayerEntity)(Object)this;
+        LivingEntity self = (LivingEntity)(Object)this;
         if (!(self instanceof PlayerContext.Holder h)) return;
         var ctx = h.smartmoving$getContext();
 

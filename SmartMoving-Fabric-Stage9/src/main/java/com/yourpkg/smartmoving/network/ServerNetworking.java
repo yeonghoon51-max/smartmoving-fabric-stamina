@@ -10,14 +10,14 @@ import net.minecraft.server.network.ServerPlayerEntity;
 public class ServerNetworking {
 
     public static void register() {
-        // Codec 등록
         PayloadTypeRegistry.playC2S().register(ActionPayload.ID, ActionPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncPayload.ID,   SyncPayload.CODEC);
 
-        // C2S 액션 수신(그랩 on/off)
         ServerPlayNetworking.registerGlobalReceiver(ActionPayload.ID, (payload, context) -> {
             ServerPlayerEntity player = context.player();
-            player.server.execute(() -> {
+            var server = player.getServer();
+            if (server == null) return;
+            server.execute(() -> {
                 if (!(player instanceof PlayerContext.Holder h)) return;
                 PlayerContext ctx = h.smartmoving$getContext();
                 byte a = payload.actionId();

@@ -33,8 +33,8 @@ public abstract class InGameHudMixin {
         for (int i = 0; i < seg; i++) {
             int x = jx + i * (segW + pad);
             int y = jy;
-            ctx.fill(x, y, x + segW, y + segH, 0x88000000);     // 배경
-            if (i < jFilled) ctx.fill(x, y, x + segW, y + segH, 0xFF2EA3FF); // 파랑
+            ctx.fill(x, y, x + segW, y + segH, 0x88000000);
+            if (i < jFilled) ctx.fill(x, y, x + segW, y + segH, 0xFF2EA3FF);
         }
 
         // 번개(우->좌, 배고픔 위)
@@ -47,7 +47,7 @@ public abstract class InGameHudMixin {
             int x = gx - i * (segW + pad) - segW;
             int y = gy;
             ctx.fill(x, y, x + segW, y + segH, 0x88000000);
-            if (i < gFilled) ctx.fill(x, y, x + segW, y + segH, 0xFFFFD94D); // 노랑
+            if (i < gFilled) ctx.fill(x, y, x + segW, y + segH, 0xFFFFD94D);
         }
     }
 

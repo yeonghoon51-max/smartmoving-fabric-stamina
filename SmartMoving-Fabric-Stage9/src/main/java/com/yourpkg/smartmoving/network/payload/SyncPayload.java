@@ -14,8 +14,8 @@ public record SyncPayload(float jumpCharge, float grabEnergy, boolean grabbing, 
             PacketCodec.tuple(
                     PacketCodecs.FLOAT, SyncPayload::jumpCharge,
                     PacketCodecs.FLOAT, SyncPayload::grabEnergy,
-                    PacketCodecs.BOOL,  SyncPayload::grabbing,
-                    PacketCodecs.BOOL,  SyncPayload::crawling,
+                    PacketCodecs.BOOLEAN,  SyncPayload::grabbing,
+                    PacketCodecs.BOOLEAN,  SyncPayload::crawling,
                     SyncPayload::new
             );
 

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "smartmoving",
+  "version": "${version}",
+  "name": "SmartMoving (Fabric)",
+  "description": "Fabric port of SmartMoving (stamina, crouch-charge jump, grab-climb, swim assist, HUD).",
+  "license": "MIT",
+  "icon": "assets/smartmoving/icon.png",
+  "entrypoints": {
+    "main": [ "com.yourpkg.smartmoving.SmartMovingMod" ],
+    "client": [ "com.yourpkg.smartmoving.client.ClientInit" ]
+  },
+  "depends": {
+    "minecraft": ">=1.21.6 <=1.21.8",
+    "fabricloader": ">=0.16.0",
+    "fabric-api": ">=0.100.0"
+  },
+  "mixins": [ "smartmoving.mixins.json" ],
+  "environment": "*"
+}

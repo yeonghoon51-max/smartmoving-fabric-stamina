@@ -1,4 +1,4 @@
-name: Build (Install Gradle in Actions)
+name: Build (Auto-find Gradle project & install Gradle)
 
 on:
   push:
@@ -7,12 +7,10 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-env:
-  PROJECT_DIR: .
-
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,21 +22,42 @@ jobs:
           java-version: 21
           cache: gradle
 
+      # Install Gradle (wrapper 없이 사용)
       - name: Set up Gradle (no wrapper)
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.14.3
 
+      # 리포 안에서 settings.gradle(또는 .kts/.dcl)을 자동 탐색하여 PROJECT_DIR 설정
+      - name: Detect Gradle project root
+        id: detect
+        shell: bash
+        run: |
+          shopt -s globstar nullglob
+          CANDIDATES=( settings.gradle settings.gradle.kts settings.gradle.dcl **/settings.gradle **/settings.gradle.kts **/settings.gradle.dcl )
+          if [ ${#CANDIDATES[@]} -eq 0 ]; then
+            echo "No Gradle settings file found."
+            exit 1
+          fi
+          # 첫 번째 매치를 프로젝트 루트로 사용
+          SETTINGS_FILE="${CANDIDATES[0]}"
+          PROJECT_DIR="$(dirname "$SETTINGS_FILE")"
+          echo "PROJECT_DIR=$PROJECT_DIR" | tee -a "$GITHUB_ENV"
+          echo "Detected Gradle project at: $PROJECT_DIR"
+
       - name: Show Gradle version
         run: gradle --version
 
       - name: Build with Gradle
-        working-directory: ${{ env.PROJECT_DIR }}
         run: gradle --no-daemon --stacktrace build
+        working-directory: ${{ env.PROJECT_DIR }}
 
+      # 산출물 업로드 (프로젝트 루트와 모든 하위 모듈 커버)
       - name: Upload JAR artifacts
         uses: actions/upload-artifact@v4
         with:
           name: smartmoving-builds
-          path: '**/build/libs/*.jar'
+          path: |
+            ${{ env.PROJECT_DIR }}/build/libs/*.jar
+            **/build/libs/*.jar
           if-no-files-found: warn

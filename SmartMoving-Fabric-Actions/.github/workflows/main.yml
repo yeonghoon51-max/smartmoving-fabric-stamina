@@ -26,16 +26,10 @@ jobs:
 
       - name: Build (stubbed offline)
         if: matrix.variant == 'stub'
-        uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: 8.7
-          build-root-directory: SmartMoving-Fabric-Actions
-          arguments: build -PuseStubDeps=true -DuseStubLoom=true --offline --no-daemon --console=plain
+        run: gradle build -PuseStubDeps=true -DuseStubLoom=true --offline --no-daemon --console=plain
+        working-directory: SmartMoving-Fabric-Actions
 
       - name: Build (full dependencies)
         if: matrix.variant == 'full'
-        uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: 8.7
-          build-root-directory: SmartMoving-Fabric-Actions
-          arguments: build --no-daemon --console=plain
+        run: gradle build --no-daemon --console=plain
+        working-directory: SmartMoving-Fabric-Actions

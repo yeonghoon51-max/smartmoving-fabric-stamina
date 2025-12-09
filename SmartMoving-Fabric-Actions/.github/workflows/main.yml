@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [stub, full]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Build (stubbed offline)
+        if: matrix.variant == 'stub'
+        run: gradle build -PuseStubDeps=true -DuseStubLoom=true --offline --no-daemon --console=plain
+        working-directory: SmartMoving-Fabric-Actions
+
+      - name: Build (full dependencies)
+        if: matrix.variant == 'full'
+        run: gradle build --no-daemon --console=plain
+        working-directory: SmartMoving-Fabric-Actions

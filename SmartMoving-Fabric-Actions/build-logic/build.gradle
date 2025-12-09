@@ -1,0 +1,16 @@
+plugins {
+    id 'java-gradle-plugin'
+}
+
+gradlePlugin {
+    plugins {
+        fabricLoomStub {
+            id = 'fabric-loom'
+            implementationClass = 'com.yourpkg.buildlogic.FabricLoomStubPlugin'
+        }
+    }
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+}

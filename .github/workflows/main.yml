@@ -20,7 +20,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.7
+          gradle-version: 8.8
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -31,10 +31,8 @@ jobs:
 
       - name: Build (stubbed offline)
         if: matrix.variant == 'stub'
-        run: |
-          gradle build -PuseStubDeps=true -DuseStubLoom=true --offline --no-daemon --console=plain --project-dir SmartMoving-Fabric-Actions
+        run: gradle build -PuseStubDeps=true -DuseStubLoom=true --offline --no-daemon --console=plain --project-dir SmartMoving-Fabric-Actions
 
       - name: Build (full dependencies)
         if: matrix.variant == 'full'
-        run: |
-          gradle build --no-daemon --console=plain --project-dir SmartMoving-Fabric-Actions
+        run: gradle build --no-daemon --console=plain --project-dir SmartMoving-Fabric-Actions

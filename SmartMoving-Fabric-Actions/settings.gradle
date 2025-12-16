@@ -1,7 +1,15 @@
 pluginManagement {
     def props = new java.util.Properties()
     file('gradle.properties').withInputStream { props.load(it) }
-    boolean useStubLoom = Boolean.parseBoolean(System.getProperty('useStubLoom', props.getProperty('useStubLoom', 'false')))
+
+    def useStubLoomSource = [
+        System.getProperty('useStubLoom'),
+        gradle.startParameter.projectProperties.get('useStubLoom'),
+        System.getenv('USE_STUB_LOOM'),
+        props.getProperty('useStubLoom')
+    ].find { it != null }
+
+    boolean useStubLoom = Boolean.parseBoolean(useStubLoomSource ?: 'false')
 
     if (useStubLoom) {
         includeBuild 'build-logic'

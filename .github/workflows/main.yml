@@ -34,3 +34,9 @@ jobs:
           ORG_GRADLE_PROJECT_useStubLoom: "true"
           ORG_GRADLE_PROJECT_useStubDeps: "true"
         run: gradle build -PuseStubDeps=true -DuseStubLoom=true --offline --no-daemon --console=plain --project-dir SmartMoving-Fabric-Actions
+
+      - name: Upload stubbed mod jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartmoving-fabric-stubbed
+          path: SmartMoving-Fabric-Actions/build/libs/*.jar

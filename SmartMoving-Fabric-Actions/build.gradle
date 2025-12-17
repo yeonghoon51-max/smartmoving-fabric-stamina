@@ -50,5 +50,16 @@ processResources {
 }
 
 jar {
+    if (useStubDeps) {
+        destinationDirectory = layout.buildDirectory.dir('libs/stub')
+        archiveClassifier = 'stub'
+    }
     from('LICENSE') { rename { 'LICENSE' } }
+}
+
+tasks.named('sourcesJar') {
+    if (useStubDeps) {
+        destinationDirectory = layout.buildDirectory.dir('libs/stub')
+        archiveClassifier = 'stub-sources'
+    }
 }

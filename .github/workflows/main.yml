@@ -27,7 +27,8 @@ jobs:
           cache: gradle
 
       # CI runs in a network-restricted environment; run the offline/stub build so the
-      # workflow succeeds while keeping the online/full build available for developers.
+      # workflow succeeds while keeping the online/full build available when dependencies
+      # can be fetched.
       - name: Build (stubbed offline)
         env:
           USE_STUB_LOOM: "true"
@@ -39,4 +40,19 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: smartmoving-fabric-stubbed
+          path: SmartMoving-Fabric-Actions/build/libs/stub/*.jar
+          if-no-files-found: error
+
+      # Attempt a full online build for a runnable mod jar. It is allowed to fail on
+      # network-restricted runners but will publish the real artifact when available.
+      - name: Build (full online)
+        run: gradle build --no-daemon --console=plain --project-dir SmartMoving-Fabric-Actions
+        continue-on-error: true
+
+      - name: Upload full mod jar (if built)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartmoving-fabric-full
           path: SmartMoving-Fabric-Actions/build/libs/*.jar
+          if-no-files-found: ignore

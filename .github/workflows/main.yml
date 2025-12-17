@@ -10,6 +10,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      RUN_FULL_BUILD: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,11 +48,12 @@ jobs:
       # Attempt a full online build for a runnable mod jar. It is allowed to fail on
       # network-restricted runners but will publish the real artifact when available.
       - name: Build (full online)
+        if: ${{ env.RUN_FULL_BUILD == 'true' }}
         run: gradle build --no-daemon --console=plain --project-dir SmartMoving-Fabric-Actions
         continue-on-error: true
 
       - name: Upload full mod jar (if built)
-        if: always()
+        if: ${{ env.RUN_FULL_BUILD == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: smartmoving-fabric-full

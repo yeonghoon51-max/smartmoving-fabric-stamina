@@ -15,6 +15,14 @@ pluginManagement {
         includeBuild 'build-logic'
     }
 
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == 'fabric-loom') {
+                useModule("net.fabricmc:fabric-loom:${props.getProperty('loom_version')}")
+            }
+        }
+    }
+
     repositories {
         maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
         gradlePluginPortal()

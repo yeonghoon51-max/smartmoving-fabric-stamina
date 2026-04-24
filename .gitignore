@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# VS Code
+.vscode/
+
+# Fabric Loom
+run/
+.loom-cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config (generated at runtime)
+config/

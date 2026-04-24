@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "package": "com.yourpkg.smartmoving.mixin.client",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "InGameHudMixin",
+    "MinecraftClientMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}

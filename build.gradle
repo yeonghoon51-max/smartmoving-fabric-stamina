@@ -1,22 +1,22 @@
 plugins {
     id 'java'
-    id 'fabric-loom' version '1.7.2'
+    id 'fabric-loom'
 }
 
-version = '1.0.0'
-group = 'com.yourpkg'
-base { archivesName = 'SmartMoving-Fabric' }
+version = project.mod_version
+group   = project.maven_group
+base { archivesName = project.archives_base_name }
 
 repositories {
     mavenCentral()
-    maven { url = 'https://maven.fabricmc.net/' }
+    maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:1.21.6"
-    mappings loom.officialMojangMappings()
-    modImplementation "net.fabricmc:fabric-loader:0.16.10"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:0.114.0+1.21.8"
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
 java {
@@ -34,6 +34,6 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 processResources {
-    inputs.property "version", project.version
-    filesMatching("fabric.mod.json") { expand "version": project.version }
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') { expand 'version': project.version }
 }

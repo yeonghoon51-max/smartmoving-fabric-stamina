@@ -26,8 +26,8 @@ jobs:
         with:
           gradle-version: '8.8'
 
-      - name: Build mod
-        run: gradle build --no-daemon --console=plain
+      - name: Build mod (offline stub)
+        run: gradle build -PuseStubDeps=true -DuseStubLoom=true --no-daemon --console=plain
 
       - name: List build output
         if: always()

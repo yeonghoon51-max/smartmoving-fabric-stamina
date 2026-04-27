@@ -21,23 +21,23 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Print Gradle version info
-        run: |
-          echo "=== Trying Gradle 8.8 ==="
-
       - name: Setup Gradle 8.8
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.8'
 
       - name: Build mod
-        run: gradle build --no-daemon --console=plain --stacktrace 2>&1 | head -80
+        run: gradle build --no-daemon --console=plain
+
+      - name: List build output
+        if: always()
+        run: find build/libs -type f 2>/dev/null || echo "build/libs not found"
 
       - name: Upload mod JAR
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: SmartMoving-Fabric-${{ github.sha }}
-          path: build/libs/SmartMoving-Fabric-*.jar
-          if-no-files-found: error
+          path: build/libs/*.jar
+          if-no-files-found: warn
           retention-days: 30

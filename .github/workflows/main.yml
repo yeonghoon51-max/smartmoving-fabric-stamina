@@ -8,7 +8,8 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build-stub:
+    name: Compile check (offline stub)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,15 +27,36 @@ jobs:
         with:
           gradle-version: '8.8'
 
-      - name: Build mod (offline stub)
+      - name: Build (stub – no network needed)
         run: gradle build -PuseStubDeps=true -DuseStubLoom=true --no-daemon --console=plain
+
+      - name: List stub output
+        if: always()
+        run: find build/libs -type f 2>/dev/null || echo "build/libs not found"
+
+  build-real:
+    name: Full Loom build (real mod JAR)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Build mod with real Loom
+        run: ./gradlew build --no-daemon --console=plain
+        continue-on-error: true
 
       - name: List build output
         if: always()
         run: find build/libs -type f 2>/dev/null || echo "build/libs not found"
 
       - name: Upload mod JAR
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: SmartMoving-Fabric-${{ github.sha }}

@@ -1,0 +1,33 @@
+pluginManagement {
+    def props = new java.util.Properties()
+    file('gradle.properties').withInputStream { props.load(it) }
+
+    def useStubLoomSource = [
+        System.getProperty('useStubLoom'),
+        gradle.startParameter.projectProperties.get('useStubLoom'),
+        System.getenv('USE_STUB_LOOM'),
+        props.getProperty('useStubLoom')
+    ].find { it != null }
+    boolean useStubLoom = Boolean.parseBoolean(useStubLoomSource ?: 'false')
+
+    if (useStubLoom) {
+        includeBuild 'build-logic'
+    }
+
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == 'fabric-loom') {
+                useModule("net.fabricmc:fabric-loom:${props.getProperty('loom_version')}")
+            }
+        }
+    }
+
+    repositories {
+        maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'SmartMoving-Fabric'
+include 'stubs'

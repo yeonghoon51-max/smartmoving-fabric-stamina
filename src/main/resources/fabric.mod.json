@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "smartmoving",
+  "version": "${version}",
+  "name": "Smart Moving (Fabric)",
+  "description": "Fabric remake of the classic Smart Moving mod: wall climbing, crawling, sliding, charged jumps, wall jumps, faster ladders and a stamina system.",
+  "authors": ["yeonghoon51-max"],
+  "license": "MIT",
+  "icon": "assets/smartmoving/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.smartmoving.SmartMoving"],
+    "client": ["com.smartmoving.client.SmartMovingClient"]
+  },
+  "mixins": [
+    "smartmoving.mixins.json",
+    {
+      "config": "smartmoving.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.13",
+    "minecraft": "~1.21.8",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

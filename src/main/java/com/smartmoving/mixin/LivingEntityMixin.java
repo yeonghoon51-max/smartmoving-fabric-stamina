@@ -1,13 +1,13 @@
 package com.smartmoving.mixin;
 
 import com.smartmoving.SmartMoving;
-import com.smartmoving.logic.HeadJump;
+import com.smartmoving.config.SmartMovingConfig;
 import com.smartmoving.logic.MovementPhysics;
-import com.smartmoving.logic.Stamina;
 import com.smartmoving.state.SmartMovingPlayer;
 import com.smartmoving.state.SmartMovingState;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,8 +17,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin {
+    /** 바닐라 달리기 속도 배율 */
+    private static final float VANILLA_SPRINT_FACTOR = 1.3f;
 
-    /** 벽 타기 / 슬라이딩 중에는 바닐라 이동 대신 직접 만든 물리를 쓴다. */
+    /** 벽 타기 / 슬라이딩 / 헤드 점프 중에는 바닐라 이동 대신 직접 만든 물리를 쓴다. */
     @Inject(method = "travel", at = @At("HEAD"), cancellable = true)
     private void smartmoving$travel(Vec3d movementInput, CallbackInfo ci) {
         if (!((Object) this instanceof PlayerEntity player)) return;
@@ -28,28 +30,39 @@ public abstract class LivingEntityMixin {
         }
     }
 
-    /** 모아 뛰기: 충전량만큼 점프 속도를 키운다. */
-    @Inject(method = "getJumpVelocity()F", at = @At("RETURN"), cancellable = true)
-    private void smartmoving$chargedJump(CallbackInfoReturnable<Float> cir) {
+    /** 점프는 원작처럼 이 모드가 직접 계산하므로 바닐라 점프를 막는다 (ClientMovementController 참고). */
+    @Inject(method = "jump", at = @At("HEAD"), cancellable = true)
+    private void smartmoving$replaceVanillaJump(CallbackInfo ci) {
         if (!((Object) this instanceof PlayerEntity player)) return;
         if (!player.getWorld().isClient) return;
-        SmartMovingState state = SmartMovingPlayer.of(player);
-        if (state.jumpCharge <= 0f) return;
-        float multiplier = 1f + state.jumpCharge * (SmartMoving.CONFIG.chargedJumpMaxMultiplier - 1f);
-        cir.setReturnValue(cir.getReturnValueF() * multiplier);
+        if (SmartMovingPlayer.of(player).handlesJumps) {
+            ci.cancel();
+        }
     }
 
-    @Inject(method = "jump", at = @At("TAIL"))
-    private void smartmoving$afterJump(CallbackInfo ci) {
+    /** 달리기 키를 누르고 달리면 원작처럼 걷기의 1.5배 (바닐라는 1.3배) */
+    @Inject(method = "getMovementSpeed(F)F", at = @At("RETURN"), cancellable = true)
+    private void smartmoving$sprintSpeed(float slipperiness, CallbackInfoReturnable<Float> cir) {
         if (!((Object) this instanceof PlayerEntity player)) return;
-        if (!player.getWorld().isClient) return;
+        if (!player.getWorld().isClient || !player.isOnGround()) return;
+        SmartMovingConfig cfg = SmartMoving.CONFIG;
+        if (cfg.enableSprint && SmartMovingPlayer.of(player).fast) {
+            cir.setReturnValue(cir.getReturnValueF() * cfg.sprintFactor / VANILLA_SPRINT_FACTOR);
+        }
+    }
+
+    /** 머리부터 착지하면 더 아프다 (원작: 2칸부터, 2배) */
+    @Inject(method = "computeFallDamage", at = @At("RETURN"), cancellable = true)
+    private void smartmoving$headFallDamage(double fallDistance, float damagePerDistance,
+                                            CallbackInfoReturnable<Integer> cir) {
+        if (!((Object) this instanceof PlayerEntity player)) return;
+        if (player.getWorld().isClient) return;
         SmartMovingState state = SmartMovingPlayer.of(player);
-        if (state.jumpCharge > 0f) {
-            Stamina.use(state, state.jumpCharge * SmartMoving.CONFIG.chargedJumpStaminaCost);
-            state.jumpCharge = 0f;
-        }
-        if (state.headJumpArmed) {
-            HeadJump.launch(player, state);
-        }
+        if (!state.headJumping && player.age - state.headJumpEndAge > 5) return;
+
+        SmartMovingConfig cfg = SmartMoving.CONFIG;
+        if (fallDistance < cfg.headFallDamageStartDistance) return;
+        int headDamage = MathHelper.ceil((fallDistance - cfg.headFallDamageStartDistance) * cfg.headFallDamageFactor);
+        cir.setReturnValue(Math.max(cir.getReturnValueI(), headDamage));
     }
 }

@@ -14,80 +14,103 @@ import java.nio.file.Path;
 /**
  * config/smartmoving.json 에 저장되는 설정값.
  * 파일이 없으면 기본값으로 새로 만든다. 값을 바꾸고 게임을 재시작하면 적용된다.
+ *
+ * <p>기본값은 원작 Smart Moving 16.3 (MC 1.8.9)의 기본 설정("normal" 난이도)을 그대로 옮긴 것이다.
+ * 괄호 안은 원작 smart_moving_options.txt 의 키 이름.
  */
 public class SmartMovingConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     // ---- 기능 on/off ----
-    public boolean enableStamina = true;
-    public boolean enableClimbing = true;
-    public boolean enableCrawling = true;
-    public boolean enableSliding = true;
-    public boolean enableChargedJump = true;
-    public boolean enableWallJump = true;
-    public boolean enableHeadJump = true;
+    public boolean enableClimbing = true;       // move.climb.free
+    public boolean enableCrawling = true;       // move.crawl
+    public boolean enableSliding = true;        // move.slide
+    public boolean enableChargedJump = true;    // move.jump.charge
+    public boolean enableHeadJump = true;       // move.jump.head.charge
+    public boolean enableSprint = true;         // move.sprint
     public boolean enableFasterLadders = true;
-    public boolean showHud = true;
+    public boolean showExhaustionBar = true;
+    public boolean showJumpChargeBar = true;
+    /** 원작처럼 달리기 키(기본 Ctrl)가 "잡기" 키 역할도 한다. 원작은 두 키 기본값이 같았다. */
+    public boolean grabUsesSprintKey = true;
 
-    // ---- 스태미나(지구력) ----
-    public float maxStamina = 100f;
-    /** 가만히 있거나 걸을 때 틱당 회복량 */
-    public float staminaRegenPerTick = 0.5f;
-    /** 공중에 있을 때 틱당 회복량 */
-    public float staminaRegenAirPerTick = 0.1f;
-    /** 달리기 틱당 소모량 */
-    public float sprintStaminaPerTick = 0.15f;
-    /** 지친 상태에서 풀려나기 위해 필요한 스태미나 비율 (0~1) */
-    public float exhaustedRecoverFraction = 0.3f;
+    // ---- 달리기 ----
+    /** 달리기 키를 누른 채 달릴 때 속도 배율, 걷기 기준 (move.sprint.factor). 바닐라 달리기는 1.3 */
+    public float sprintFactor = 1.5f;
+
+    // ---- 지침(exhaustion): 0에서 시작해 행동하면 올라가고, 쉬면 내려간다 ----
+    public boolean enableExhaustion = true;
+    /** 달리기 중 틱당 증가량 (move.exhaustion.sprint.gain.factor) */
+    public float sprintExhaustionGain = 2f;
+    /** 이 값 이하일 때만 달리기 시작 가능 (move.exhaustion.sprint.start) */
+    public float sprintExhaustionStart = 50f;
+    /** 이 값을 넘으면 달리기가 끊긴다 (move.exhaustion.sprint.stop) */
+    public float sprintExhaustionStop = 100f;
+    /** 틱당 회복량: 기본 x 상태별 배율 (move.exhaustion.*.loss.factor) */
+    public float exhaustionLossBase = 1f;
+    public float exhaustionLossSprinting = 0f;
+    public float exhaustionLossRunning = 0.5f;
+    public float exhaustionLossWalking = 1f;
+    public float exhaustionLossSneaking = 1.5f;
+    public float exhaustionLossStanding = 2f;
+    public float exhaustionLossFalling = 2.5f;
+    /** 배고픔이 이 값 이하면 지침이 회복되지 않는다 (move.exhaustion.food.minimum) */
+    public int exhaustionLossFoodMinimum = 4;
+
+    // ---- 점프 ----
+    /** 달리기/뛰기 점프의 수평 속도 배율 (move.jump.sprint/run.horizontal.factor) */
+    public float sprintJumpHorizontalFactor = 2f;
+    public float runJumpHorizontalFactor = 2f;
+    /** 점프 지침: 증가량 / 이 값 이하일 때만 점프 가능 (move.jump.sprint/run.exhaustion.*) */
+    public float sprintJumpExhaustionGain = 65f;
+    public float sprintJumpExhaustionStop = 35f;
+    public float runJumpExhaustionGain = 60f;
+    public float runJumpExhaustionStop = 40f;
+
+    // ---- 모아 뛰기: 웅크리고 제자리에서 점프 키를 누르고 있다가 뗀다 ----
+    public int jumpChargeMaximum = 20;          // move.jump.charge.maximum (틱)
+    public float jumpChargeFactor = 1.3f;       // move.jump.charge.factor (최대 충전 시 높이 배율)
+    public float jumpChargeExhaustionGain = 30f;
+    public float jumpChargeExhaustionStop = 100f;
+
+    // ---- 헤드 점프: 달리면서 잡기 + 점프 키를 누르고 있다가 뗀다 ----
+    /** 이 틱 이상 모으면 일반 점프 높이, 짧게 모을수록 낮고 납작하게 날아간다 (move.jump.head.charge.maximum) */
+    public int headJumpChargeMaximum = 10;
+    /** 헤드 점프 중 공중 조작 배율 (move.jump.head.control.factor) */
+    public float headJumpControlFactor = 0.2f;
+    /** 머리부터 착지할 때 낙하 대미지 (move.fall.head.damage.*) */
+    public float headFallDamageStartDistance = 2f;
+    public float headFallDamageFactor = 2f;
+
+    // ---- 슬라이딩: 달리면서 잡기 + 웅크리기 ----
+    public float slideExhaustionGain = 10f;     // move.jump.slide.exhaustion.gain.factor
+    public float slideExhaustionStop = 90f;     // move.jump.slide.exhaustion.stop.factor
+    /** 미끄러짐 배율, 클수록 멀리 미끄러진다 (move.slide.glide.factor) */
+    public float slideGlideFactor = 1f;
+    /** 좌우 키로 방향을 트는 각도(도/틱) (move.slide.control.angle) */
+    public float slideControlDegrees = 1f;
+    /** 이 속도 배율 아래로 느려지면 기어가기로 바뀐다 (move.slide.speed.stop.factor) */
+    public float slideSpeedStopFactor = 1f;
+    /** 슬라이딩 중 이 거리 이상 떨어지면 슬라이딩이 끝난다 (move.fall.distance.minimum) */
+    public float fallingDistanceMinimum = 3f;
 
     // ---- 벽 타기 ----
     public float climbUpSpeed = 0.12f;
     public float climbDownSpeed = 0.15f;
     public float climbSideSpeed = 0.07f;
-    public float climbHoldStaminaPerTick = 0.2f;
-    public float climbMoveStaminaPerTick = 0.45f;
+    /** 원작 기본값은 꺼짐(move.climb.exhaustion)이지만, 이 포트는 아무 벽이나 탈 수 있어서 켜 둔다 */
+    public boolean climbExhaustion = true;
+    public float climbExhaustionStart = 60f;
+    public float climbExhaustionStop = 80f;
+    public float climbUpExhaustionGain = 1.2f;
+    public float climbDownExhaustionGain = 1.05f;
+    public float climbStrafeExhaustionGain = 1.1f;
     /** 서버에서 벽을 타는 동안 틱당 더하는 허기 소모 */
     public float climbHungerExhaustion = 0.005f;
-    /** 벽 위 턱을 넘을 때 위로 튀어오르는 속도 */
     public float ledgeClimbBoost = 0.42f;
-    /** 벽에 매달린 채 점프 → 위로 도약 */
-    public float climbJumpUp = 0.5f;
-    public float climbJumpStaminaCost = 10f;
-
-    // ---- 벽 점프 (벽에 매달린 채 뒤 + 점프) ----
-    public float wallJumpUp = 0.55f;
-    public float wallJumpPush = 0.45f;
-    public float wallJumpStaminaCost = 15f;
-
-    // ---- 슬라이딩 (달리다가 웅크리기) ----
-    public float slideBoost = 0.3f;
-    public float slideFriction = 0.96f;
-    public int slideMaxTicks = 30;
-    public float slideStaminaCost = 10f;
-    /** 슬라이딩 시작 부스트는 이 속도보다 느릴 때만 붙는다 (무한 가속 방지) */
-    public float slideMaxBoostedSpeed = 0.45f;
-    /** 공중에서 웅크리기를 누른 채 착지하면 속도를 유지한 채 슬라이딩으로 이어진다 */
-    public float landingSlideMinSpeed = 0.15f;
-    public float landingSlideStaminaCost = 4f;
-
-    // ---- 헤드 점프 / 여우 점프 (달리기 + 잡기 + 점프) ----
-    /** 앞으로 더해지는 속도 */
-    public float headJumpBoost = 0.35f;
-    public float headJumpUp = 0.36f;
-    /** 헤드 점프 수평 최고 속도 (슬라이딩 → 헤드 점프 연계 시 상한) */
-    public float headJumpMaxSpeed = 1.0f;
-    /** 공중 수평 감속 (1 = 감속 없음, 바닐라 공중은 0.91) */
-    public float headJumpAirDrag = 0.985f;
-    /** 공중에서 바라보는 방향으로 꺾이는 정도 (0~1) */
-    public float headJumpSteering = 0.08f;
-    /** 헤드 점프를 쓰려면 이 정도 수평 속도가 있어야 한다 (달리는 중이면 무시) */
-    public float headJumpMinSpeed = 0.2f;
-    public float headJumpStaminaCost = 15f;
-
-    // ---- 모아 뛰기 (웅크린 채 가만히 있다가 점프) ----
-    public int chargedJumpTicks = 20;
-    public float chargedJumpMaxMultiplier = 1.9f;
-    public float chargedJumpStaminaCost = 20f;
+    /** 벽에서 뒤로 점프 (move.jump.climb.back.up.vertical/horizontal.factor) */
+    public float climbBackJumpVertical = 0.2f;
+    public float climbBackJumpHorizontal = 0.3f;
 
     // ---- 사다리 ----
     public float ladderUpSpeed = 0.3f;

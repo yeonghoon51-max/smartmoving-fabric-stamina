@@ -21,7 +21,11 @@ public final class SmartMovingNetworking {
             ServerPlayerEntity player = context.player();
             SmartMovingState state = SmartMovingPlayer.of(player);
             byte old = state.flags();
+            boolean wasHeadJumping = state.headJumping;
             state.applyFlags(payload.flags());
+            if (wasHeadJumping && !state.headJumping) {
+                state.headJumpEndAge = player.age;
+            }
             if (old != state.flags()) {
                 broadcast(player, state.flags());
             }

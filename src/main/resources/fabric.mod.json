@@ -5,7 +5,8 @@
   "name": "Smart Moving (Fabric)",
   "description": "Fabric remake of the classic Smart Moving mod: wall climbing, crawling, sliding, charged jumps, wall jumps, faster ladders and a stamina system.",
   "authors": ["yeonghoon51-max"],
-  "license": "MIT",
+  "contributors": ["Divisor (original Smart Moving)"],
+  "license": "GPL-3.0-or-later",
   "icon": "assets/smartmoving/icon.png",
   "environment": "*",
   "entrypoints": {

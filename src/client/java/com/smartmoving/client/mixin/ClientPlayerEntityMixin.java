@@ -1,6 +1,5 @@
 package com.smartmoving.client.mixin;
 
-import com.smartmoving.SmartMoving;
 import com.smartmoving.client.ClientMovementController;
 import com.smartmoving.state.SmartMovingPlayer;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -22,8 +21,7 @@ public abstract class ClientPlayerEntityMixin {
     /** 지쳐 있으면 달릴 수 없다. */
     @Inject(method = "canSprint", at = @At("RETURN"), cancellable = true)
     private void smartmoving$noSprintWhenExhausted(CallbackInfoReturnable<Boolean> cir) {
-        if (SmartMoving.CONFIG.enableStamina
-                && SmartMovingPlayer.of((ClientPlayerEntity) (Object) this).exhausted) {
+        if (SmartMovingPlayer.of((ClientPlayerEntity) (Object) this).sprintBlocked) {
             cir.setReturnValue(false);
         }
     }

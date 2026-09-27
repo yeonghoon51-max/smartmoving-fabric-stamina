@@ -16,7 +16,7 @@ public class SmartMovingClient implements ClientModInitializer {
     public void onInitializeClient() {
         SmartMovingKeys.register();
 
-        HudElementRegistry.attachElementAfter(VanillaHudElements.FOOD_BAR, SmartMoving.id("stamina"), StaminaHud::render);
+        HudElementRegistry.attachElementAfter(VanillaHudElements.FOOD_BAR, SmartMoving.id("stamina"), ExhaustionHud::render);
 
         ClientPlayNetworking.registerGlobalReceiver(StateSyncS2CPayload.ID, (payload, context) -> {
             if (context.client().world == null) return;

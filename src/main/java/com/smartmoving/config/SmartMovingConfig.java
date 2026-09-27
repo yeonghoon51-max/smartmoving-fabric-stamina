@@ -25,6 +25,7 @@ public class SmartMovingConfig {
     public boolean enableSliding = true;
     public boolean enableChargedJump = true;
     public boolean enableWallJump = true;
+    public boolean enableHeadJump = true;
     public boolean enableFasterLadders = true;
     public boolean showHud = true;
 
@@ -63,6 +64,25 @@ public class SmartMovingConfig {
     public float slideFriction = 0.96f;
     public int slideMaxTicks = 30;
     public float slideStaminaCost = 10f;
+    /** 슬라이딩 시작 부스트는 이 속도보다 느릴 때만 붙는다 (무한 가속 방지) */
+    public float slideMaxBoostedSpeed = 0.45f;
+    /** 공중에서 웅크리기를 누른 채 착지하면 속도를 유지한 채 슬라이딩으로 이어진다 */
+    public float landingSlideMinSpeed = 0.15f;
+    public float landingSlideStaminaCost = 4f;
+
+    // ---- 헤드 점프 / 여우 점프 (달리기 + 잡기 + 점프) ----
+    /** 앞으로 더해지는 속도 */
+    public float headJumpBoost = 0.35f;
+    public float headJumpUp = 0.36f;
+    /** 헤드 점프 수평 최고 속도 (슬라이딩 → 헤드 점프 연계 시 상한) */
+    public float headJumpMaxSpeed = 1.0f;
+    /** 공중 수평 감속 (1 = 감속 없음, 바닐라 공중은 0.91) */
+    public float headJumpAirDrag = 0.985f;
+    /** 공중에서 바라보는 방향으로 꺾이는 정도 (0~1) */
+    public float headJumpSteering = 0.08f;
+    /** 헤드 점프를 쓰려면 이 정도 수평 속도가 있어야 한다 (달리는 중이면 무시) */
+    public float headJumpMinSpeed = 0.2f;
+    public float headJumpStaminaCost = 15f;
 
     // ---- 모아 뛰기 (웅크린 채 가만히 있다가 점프) ----
     public int chargedJumpTicks = 20;

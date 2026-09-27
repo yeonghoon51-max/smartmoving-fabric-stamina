@@ -31,6 +31,10 @@ public final class MovementPhysics {
             slide(player);
             return true;
         }
+        if (state.headJumping) {
+            headJump(player);
+            return true;
+        }
         return false;
     }
 
@@ -55,6 +59,34 @@ public final class MovementPhysics {
         player.move(MovementType.SELF, motion);
         player.setVelocity(Vec3d.ZERO);
         player.onLanding(); // 낙하 거리 초기화
+    }
+
+    /**
+     * 헤드 점프: 공기 저항이 거의 없어 멀리 날아가고, 바라보는 쪽으로 조금씩 방향이 꺾인다.
+     * 속력은 유지한 채 방향만 바꾸므로 시점을 돌려 곡선으로 날 수 있다.
+     */
+    private static void headJump(PlayerEntity player) {
+        SmartMovingConfig cfg = SmartMoving.CONFIG;
+        Vec3d v = player.getVelocity();
+        double speed = Math.sqrt(v.x * v.x + v.z * v.z);
+        double vx = v.x;
+        double vz = v.z;
+        if (speed > 1.0E-4) {
+            Vec3d look = Vec3d.fromPolar(0f, player.getYaw());
+            double k = cfg.headJumpSteering;
+            double dx = v.x / speed * (1 - k) + look.x * k;
+            double dz = v.z / speed * (1 - k) + look.z * k;
+            double len = Math.sqrt(dx * dx + dz * dz);
+            if (len > 1.0E-4) {
+                vx = dx / len * speed;
+                vz = dz / len * speed;
+            }
+        }
+        double drag = cfg.headJumpAirDrag;
+        player.setVelocity(vx * drag, v.y - GRAVITY, vz * drag);
+        player.move(MovementType.SELF, player.getVelocity());
+        Vec3d after = player.getVelocity();
+        player.setVelocity(after.x, after.y * 0.98, after.z);
     }
 
     /** 슬라이딩: 입력 없이 관성으로 미끄러지며 천천히 감속 */

@@ -61,8 +61,21 @@ public final class ClientMovementController {
         if (state.crawlFromSlide && !sneakKey) state.crawlFromSlide = false;
         state.crawling = state.crawlToggled || state.crawlFromSlide;
 
+        // ---------- 헤드 점프 착지 ----------
+        if (state.headJumping && (onGround || special || player.isClimbing())) {
+            state.headJumping = false;
+        }
+
         // ---------- 슬라이딩 ----------
         tickSlide(player, state, cfg, sneakKey, sneakPressed, jumpKey, onGround, special);
+
+        // ---------- 헤드 점프 (달리기 + 잡기 + 점프) ----------
+        // 여기서는 "이번 점프를 헤드 점프로" 표시만 하고, 실제 발사는 바닐라 jump() 직후에 한다.
+        state.headJumpArmed = cfg.enableHeadJump && grabKey && jumpKey && onGround && !special
+                && !state.crawling && !player.isClimbing()
+                && (player.isSprinting() || player.getVelocity().horizontalLength() >= cfg.headJumpMinSpeed)
+                && !WallProbe.hasAnyWall(player, player.getHorizontalFacing())
+                && Stamina.has(state, cfg.headJumpStaminaCost);
 
         // ---------- 벽 타기 / 벽 점프 ----------
         tickClimb(player, state, cfg, grabKey, forwardKey, backKey, jumpPressed, onGround, special);
@@ -86,6 +99,7 @@ public final class ClientMovementController {
         // ---------- 스태미나 ----------
         tickStamina(player, state, cfg, onGround, forwardKey, backKey);
 
+        state.prevOnGround = onGround;
         syncToServer(state);
     }
 
@@ -93,16 +107,30 @@ public final class ClientMovementController {
                                   boolean sneakKey, boolean sneakPressed, boolean jumpKey,
                                   boolean onGround, boolean special) {
         if (!state.sliding) {
-            boolean canStart = cfg.enableSliding && !special && onGround && player.isSprinting() && sneakPressed
-                    && !state.crawling && player.getVelocity().horizontalLength() > 0.1
+            if (!cfg.enableSliding || special || !onGround || state.crawlToggled) return;
+            double speed = player.getVelocity().horizontalLength();
+
+            // 공중에서 웅크리기를 누른 채 착지: 속도를 그대로 살려 슬라이딩 (연계 무빙의 핵심)
+            boolean landing = !state.prevOnGround && sneakKey && speed >= cfg.landingSlideMinSpeed
+                    && Stamina.has(state, cfg.landingSlideStaminaCost);
+            // 달리다가 웅크리기: 앞으로 부스트를 받으며 슬라이딩
+            boolean fromSprint = player.isSprinting() && sneakPressed && !state.crawling && speed > 0.1
                     && Stamina.has(state, cfg.slideStaminaCost);
-            if (canStart) {
-                Vec3d look = Vec3d.fromPolar(0f, player.getYaw());
-                player.addVelocity(look.x * cfg.slideBoost, 0, look.z * cfg.slideBoost);
+
+            if (landing) {
+                Stamina.use(state, cfg.landingSlideStaminaCost);
+            } else if (fromSprint) {
+                if (speed < cfg.slideMaxBoostedSpeed) {
+                    Vec3d look = Vec3d.fromPolar(0f, player.getYaw());
+                    player.addVelocity(look.x * cfg.slideBoost, 0, look.z * cfg.slideBoost);
+                }
                 Stamina.use(state, cfg.slideStaminaCost);
-                state.sliding = true;
-                state.slideTicks = 0;
+            } else {
+                return;
             }
+            state.sliding = true;
+            state.slideTicks = 0;
+            state.crawlFromSlide = false;
             return;
         }
 
@@ -114,7 +142,8 @@ public final class ClientMovementController {
             state.sliding = false;
             player.setSprinting(false);
             // 웅크리기를 계속 누르고 있으면 그대로 기어가기로 이어진다 (원작 동작).
-            if (sneakKey && !special && cfg.enableCrawling) {
+            // 점프로 끝낸 경우는 슬라이드 점프/헤드 점프로 이어지므로 제외.
+            if (sneakKey && !jumpKey && !special && cfg.enableCrawling) {
                 state.crawlFromSlide = true;
                 state.crawling = true;
             }
@@ -187,7 +216,7 @@ public final class ClientMovementController {
             }
         } else if (player.isSprinting() && !player.getAbilities().allowFlying) {
             Stamina.use(state, cfg.sprintStaminaPerTick);
-        } else if (!state.sliding && state.jumpCharge <= 0f) {
+        } else if (!state.sliding && !state.headJumping && state.jumpCharge <= 0f) {
             Stamina.regen(state, onGround ? cfg.staminaRegenPerTick : cfg.staminaRegenAirPerTick);
         }
 
@@ -211,6 +240,8 @@ public final class ClientMovementController {
         state.crawling = false;
         state.climbing = false;
         state.sliding = false;
+        state.headJumping = false;
+        state.headJumpArmed = false;
         state.crawlToggled = false;
         state.crawlFromSlide = false;
         state.jumpCharge = 0f;

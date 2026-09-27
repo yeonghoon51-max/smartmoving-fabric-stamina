@@ -1,6 +1,7 @@
 package com.smartmoving.mixin;
 
 import com.smartmoving.SmartMoving;
+import com.smartmoving.logic.HeadJump;
 import com.smartmoving.logic.MovementPhysics;
 import com.smartmoving.logic.Stamina;
 import com.smartmoving.state.SmartMovingPlayer;
@@ -46,6 +47,9 @@ public abstract class LivingEntityMixin {
         if (state.jumpCharge > 0f) {
             Stamina.use(state, state.jumpCharge * SmartMoving.CONFIG.chargedJumpStaminaCost);
             state.jumpCharge = 0f;
+        }
+        if (state.headJumpArmed) {
+            HeadJump.launch(player, state);
         }
     }
 }

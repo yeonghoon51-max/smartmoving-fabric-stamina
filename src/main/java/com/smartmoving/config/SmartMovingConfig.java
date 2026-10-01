@@ -94,12 +94,17 @@ public class SmartMovingConfig {
     /** 슬라이딩 중 이 거리 이상 떨어지면 슬라이딩이 끝난다 (move.fall.distance.minimum) */
     public float fallingDistanceMinimum = 3f;
 
-    // ---- 벽 타기 ----
-    public float climbUpSpeed = 0.12f;
-    public float climbDownSpeed = 0.15f;
-    public float climbSideSpeed = 0.07f;
-    /** 원작 기본값은 꺼짐(move.climb.exhaustion)이지만, 이 포트는 아무 벽이나 탈 수 있어서 켜 둔다 */
-    public boolean climbExhaustion = true;
+    // ---- 벽 타기: 잡기 키를 누른 채 블록 모서리·반블록·계단·울타리 같은 "잡을 곳"을 오른다 ----
+    /** 오르기/내려가기 속도 배율 (move.climb.free.up/down.speed.factor) */
+    public float freeClimbingUpSpeedFactor = 1f;
+    public float freeClimbingDownSpeedFactor = 1f;
+    /** 이 거리 이상 떨어지다가 벽을 잡으면 대미지 (move.climb.fall.damage.start.distance / factor) */
+    public float freeClimbFallDamageStartDistance = 2f;
+    public float freeClimbFallDamageFactor = 2f;
+    /** 이 거리 이상 떨어지는 중에는 벽을 잡을 수 없다 (move.climb.fall.maximum.distance) */
+    public float freeClimbFallMaximumDistance = 3f;
+    /** 벽 타기 지침 (move.climb.exhaustion, 원작 기본값 꺼짐) */
+    public boolean climbExhaustion = false;
     public float climbExhaustionStart = 60f;
     public float climbExhaustionStop = 80f;
     public float climbUpExhaustionGain = 1.2f;
@@ -107,10 +112,13 @@ public class SmartMovingConfig {
     public float climbStrafeExhaustionGain = 1.1f;
     /** 서버에서 벽을 타는 동안 틱당 더하는 허기 소모 */
     public float climbHungerExhaustion = 0.005f;
-    public float ledgeClimbBoost = 0.42f;
     /** 벽에서 뒤로 점프 (move.jump.climb.back.up.vertical/horizontal.factor) */
     public float climbBackJumpVertical = 0.2f;
     public float climbBackJumpHorizontal = 0.3f;
+    /** 손으로만 매달려 점프할 때 높이 배율 (move.jump.climb.*.hands.only.vertical.factor) */
+    public float climbJumpHandsOnlyVerticalFactor = 0.8f;
+    /** 뒤로 점프할 때 잡기 키를 누르고 있으면 헤드 점프 (move.jump.climb.back.head.on.grab) */
+    public boolean climbJumpBackHeadOnGrab = true;
 
     // ---- 사다리 ----
     public float ladderUpSpeed = 0.3f;

@@ -22,6 +22,8 @@ public class SmartMovingState {
     // ---- 서버 전용 ----
     /** 헤드 점프가 끝난 서버 틱 (머리부터 착지할 때 낙하 대미지 계산용) */
     public int headJumpEndAge = Integer.MIN_VALUE;
+    /** 지난 틱에 벽을 타고 있었다 (벽을 잡는 순간의 낙하 대미지 판정용) */
+    public boolean serverWasClimbing;
 
     // ---- 클라이언트 전용 ----
     /** 공기 저항이 거의 없는 비행 (슬라이딩하다 떨어졌을 때). 원작의 isAerodynamic */
@@ -57,6 +59,29 @@ public class SmartMovingState {
     public boolean prevJumpKey;
     /** 벽 점프 직후 다시 벽에 달라붙지 않도록 하는 쿨다운 */
     public int grabCooldown;
+
+    // ---- 벽 타기 (원작 handleClimbing) ----
+    /** 원작 wantClimbUp / wantClimbDown: 잡기 키를 누른 채 앞키를 누르고 있나 / 아닌가 */
+    public boolean wantClimbUp;
+    public boolean wantClimbDown;
+    /** 원작 isClimbHolding: 벽에 매달린 채 웅크리기 키로 버티는 중 */
+    public boolean climbHolding;
+    /** 원작 isNeighborClimbing: 바로 옆(정면 방향)에 손/발로 잡을 곳이 있다 */
+    public boolean neighborClimbing;
+    /** 원작 isFast 의 벽 타기 부분 (isClimbSprinting) */
+    public boolean climbFast;
+    /** 이번 틱에 점프 키를 새로 눌렀다 / 잡기 키를 누르고 있다 (이동 후 벽 타기 판정에서 쓴다) */
+    public boolean jumpStartKey;
+    public boolean grabKey;
+    /** 이번 틱 travel() 시작 시점의 정보 (원작 moveEntityWithHeading 시작 부분) */
+    public boolean wasClimbingThisTravel;
+    public double travelHorizontalDamping = 0.91;
+    public double lastHorizontalCollisionX;
+    public double lastHorizontalCollisionZ;
+    /** 지난 틱 위치 (원작 getTickDistance) */
+    public double lastTickX;
+    public double lastTickY;
+    public double lastTickZ;
     public byte lastSentFlags;
     public int resendTimer;
 

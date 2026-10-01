@@ -14,7 +14,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.GameOptions;
-import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
 /**
@@ -130,6 +129,28 @@ public final class ClientMovementController {
 
         state.fast = wantSprint && allowed && onGround && player.isSprinting() && !state.climbing && !special;
         state.running = player.isSprinting() && !state.fast && onGround;
+
+        // 원작 isClimbSprinting: 벽 타기 중에도 달리기 키를 누르면 빨라진다 (실제로 움직이고 있을 때만)
+        double dx = player.getX() - state.lastTickX;
+        double dy = player.getY() - state.lastTickY;
+        double dz = player.getZ() - state.lastTickZ;
+        double tickDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        state.lastTickX = player.getX();
+        state.lastTickY = player.getY();
+        state.lastTickZ = player.getZ();
+
+        boolean wantClimbSprint = cfg.enableSprint && in.sprint() && !in.sneak() && state.climbing && !special;
+        boolean climbSprintAllowed = true;
+        if (wantClimbSprint && Exhaustion.enabled()) {
+            climbSprintAllowed = state.exhaustion <= cfg.sprintExhaustionStop
+                    && (state.climbFast || state.exhaustion <= cfg.sprintExhaustionStart);
+            state.maxExhaustionForAction = Math.min(state.maxExhaustionForAction, cfg.sprintExhaustionStop);
+            state.maxExhaustionToStartAction = Math.min(state.maxExhaustionToStartAction, cfg.sprintExhaustionStart);
+        }
+        double minTickDistance = state.wantClimbUp ? 0.07 * cfg.freeClimbingUpSpeedFactor
+                : state.wantClimbDown ? 0.11 * cfg.freeClimbingDownSpeedFactor
+                : 0.07;
+        state.climbFast = wantClimbSprint && climbSprintAllowed && tickDistance >= minTickDistance;
     }
 
     /** 원작 2403~2450행: 헤드 점프 착지, 슬라이딩 시작/끝, 슬라이딩 → 활공 */
@@ -197,57 +218,29 @@ public final class ClientMovementController {
         state.crawling = canCrawl && !state.sliding && !state.headJumping && (state.crawlToggled || start || keep);
     }
 
+    /**
+     * 원작 updateEntityActionState() 의 wantClimb / wantClimbUp / wantClimbDown / isClimbHolding.
+     * 실제로 벽을 타는지는 이동 직후 logic.climb.FreeClimbing 이 손/발로 잡을 곳을 찾아 정한다.
+     */
     private static void tickClimb(ClientPlayerEntity player, SmartMovingState state, SmartMovingConfig cfg,
                                   Input in, boolean onGround, boolean special) {
-        Direction facing = player.getHorizontalFacing();
-        boolean wall = WallProbe.hasAnyWall(player, facing);
-        boolean wasClimbing = state.climbing;
+        boolean forward = in.forward() && !in.back();
+        boolean wouldWantClimb = (in.grab() || (state.climbHolding && in.sneak()))
+                && (!state.sliding || in.grab() && forward)
+                && !state.headJumping;
+        boolean wantClimb = cfg.enableClimbing && !special && wouldWantClimb;
+        boolean wantCrawl = cfg.enableCrawling && (state.crawling || (in.grabStart() && in.sneak() && onGround));
 
-        boolean exhaustionOk = true;
-        if (cfg.climbExhaustion && Exhaustion.enabled()) {
-            float limit = wasClimbing ? cfg.climbExhaustionStop : cfg.climbExhaustionStart;
-            exhaustionOk = state.exhaustion <= limit;
-            state.maxExhaustionForAction = Math.min(state.maxExhaustionForAction, cfg.climbExhaustionStop);
-            state.maxExhaustionToStartAction = Math.min(state.maxExhaustionToStartAction, cfg.climbExhaustionStart);
-        }
+        state.wantClimbUp = wantClimb && forward;
+        state.wantClimbDown = wantClimb && !forward && !wantCrawl;
 
-        boolean canClimb = cfg.enableClimbing && in.grab() && wall && !special && !player.isClimbing()
-                && !state.wantsLowPose() && state.grabCooldown == 0 && exhaustionOk;
-        // 땅에 서 있을 때는 앞으로 가려고 할 때만 벽에 달라붙는다.
-        state.climbing = canClimb && (!onGround || in.forward() || wasClimbing);
+        boolean wantClimbHolding = (state.climbHolding && in.sneak())
+                || (wantClimb && !state.crawling && (in.sneak() || state.crawlToggled));
+        state.climbHolding = wantClimbHolding && state.climbing;
 
-        if (!state.climbing) {
-            // 벽을 오르다가 꼭대기를 넘었다: 턱 위로 올라서도록 살짝 밀어 올린다.
-            if (wasClimbing && in.forward() && !wall) {
-                ledgeHop(player, facing, cfg);
-            }
-            return;
-        }
-
-        if (in.forward() && WallProbe.isAtLedge(player, facing)) {
-            state.climbing = false;
-            state.grabCooldown = 6;
-            ledgeHop(player, facing, cfg);
-            return;
-        }
-
-        if (in.jumpStart()) {
-            if (in.back()) {
-                // 벽을 박차고 뒤로: 원작에서 잡기를 누른 채면 헤드 점프
-                state.climbing = false;
-                state.grabCooldown = 10;
-                Jumps.tryJump(player, state, cfg.enableHeadJump ? JumpType.CLIMB_BACK_HEAD : JumpType.CLIMB_BACK_UP,
-                        MoveSpeed.STANDING, player.getYaw() + 180f);
-            } else {
-                state.climbing = false;
-                state.grabCooldown = 5;
-                Jumps.tryJump(player, state, JumpType.CLIMB_UP, MoveSpeed.STANDING, null);
-            }
-        }
-    }
-
-    private static void ledgeHop(ClientPlayerEntity player, Direction facing, SmartMovingConfig cfg) {
-        player.setVelocity(facing.getOffsetX() * 0.12, cfg.ledgeClimbBoost, facing.getOffsetZ() * 0.12);
+        // 이동 직후 벽 타기 판정에서 쓴다 (꼭대기에서 점프, 뒤로 점프)
+        state.jumpStartKey = in.jumpStart();
+        state.grabKey = in.grab();
     }
 
     /** 원작 handleJumping(): 일반 점프, 모아 뛰기, 헤드 점프 */
@@ -330,7 +323,7 @@ public final class ClientMovementController {
             else if (in.back()) additional = cfg.climbDownExhaustionGain;
             else additional = cfg.climbStrafeExhaustionGain;
         }
-        if (state.fast) {
+        if (state.fast || state.climbFast) {
             if (additional == 0f) additional = 1f;
             additional *= cfg.sprintExhaustionGain;
         }
@@ -365,6 +358,10 @@ public final class ClientMovementController {
         state.handlesJumps = false;
         state.sprintBlocked = false;
         state.fast = false;
+        state.climbFast = false;
+        state.climbHolding = false;
+        state.wantClimbUp = false;
+        state.wantClimbDown = false;
         state.jumpCharge = 0;
         state.headJumpCharge = 0;
     }

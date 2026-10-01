@@ -15,8 +15,8 @@ Divisor의 **Smart Moving** (Forge/ModLoader, 마지막 버전 16.3 for MC 1.8.9
 | 헤드 점프 | 달리면서 **Ctrl + 점프를 누르고 있다가 뗌** | 머리부터 날아감. 짧게 누를수록 납작하고, 0.5초(10틱) 이상이면 일반 점프 높이 |
 | 모아 뛰기 | 제자리에서 **Shift + 점프를 누르고 있다가 뗌** | 최대 1초(20틱) 충전, 1.3배 높이 |
 | 기어가기 | **Shift 누른 채 Ctrl** 누르기 (또는 Z로 켜기/끄기) | Shift를 떼면 일어섬 (공간이 없으면 계속) |
-| 벽 타기 | 벽을 보고 **Ctrl** 유지 | 앞 = 위, 뒤 = 아래, 좌우 = 옆. 꼭대기에서 자동으로 올라섬 |
-| 벽 점프 | 벽 타는 중 점프 / **뒤 + 점프** | 위로 점프 / 벽을 박차고 뒤로 헤드 점프 |
+| 벽 타기 | 잡을 곳(블록 모서리·반블록·계단·울타리 등)을 보고 **Ctrl** 유지 | 앞 = 오르기, 앞키 떼기 = 내려가기, 좌우 = 옆. 평평한 벽은 못 탐 (원작과 같음) |
+| 벽 점프 | 꼭대기에 매달려 점프 / **Shift** 로 매달린 채 점프 | 위로 뛰어오르기 / 벽을 박차고 뒤로 (Ctrl 유지 = 헤드 점프) |
 | 빠른 사다리 | 사다리에서 앞키 | 바닐라보다 빠르게 올라감 |
 
 ### 여우 무빙
@@ -42,7 +42,7 @@ Divisor의 **Smart Moving** (Forge/ModLoader, 마지막 버전 16.3 for MC 1.8.9
 
 ## 원작과 다른 점
 
-- **벽 타기**: 원작은 벽에 틈이나 턱이 있어야만 탈 수 있었습니다. 이 포트는 아직 아무 벽이나 탈 수 있습니다. 그래서 원작에서는 꺼져 있던 벽 타기 지침을 켜 두었습니다.
+- **벽 타기**: 원작의 손/발 잡기 판정(Orientation)과 속도 규칙을 그대로 옮겼습니다. 기어가면서 틈으로 오르기(climb-crawl)는 아직 없습니다.
 - **아직 없는 기능**: 공중에서 벽을 차는 벽 점프, 옆·뒤 점프, 천장 매달리기, 수영·다이빙, 비행, 원작 애니메이션.
 - **지침이 배고픔으로 바뀌는 부분**: 원작은 지침이 회복될 때 배고픔을 조금 소모했습니다. 이 포트에는 없습니다.
 
@@ -77,12 +77,14 @@ src/main/java/com/smartmoving/        (서버+클라이언트 공용)
   config/SmartMovingConfig.java       설정 파일
   state/SmartMovingState.java         플레이어별 상태 (기어가기/벽타기/슬라이딩/헤드점프/지침 ...)
   state/SmartMovingPlayer.java        PlayerEntity 에 상태를 붙이는 인터페이스
-  logic/MovementPhysics.java          벽타기·슬라이딩 물리 (바닐라 travel 대체)
-  logic/WallProbe.java                앞에 벽/턱이 있는지 검사
+  logic/MovementPhysics.java          슬라이딩·헤드 점프 물리 (바닐라 travel 대체)
+  logic/climb/FreeClimbing.java       벽 타기 (원작 handleClimbing)
+  logic/climb/Orientation.java        손/발로 잡을 곳 찾기 (원작 Orientation)
+  logic/WallProbe.java                일어설 공간이 있는지 검사
   logic/Jumps.java                    원작 tryJump 포트 (모든 점프 공식)
   logic/Exhaustion.java               원작 지침 계산
   network/                            클라이언트↔서버 상태 동기화 패킷
-  mixin/PlayerEntityMixin.java        자세 강제, 벽타기 중 낙하거리 초기화
+  mixin/PlayerEntityMixin.java        자세 강제, 벽 잡을 때 낙하 대미지·낙하거리 초기화
   mixin/LivingEntityMixin.java        travel 가로채기, 바닐라 점프 대체, 달리기 속도, 헤드 착지 대미지
 
 src/client/java/com/smartmoving/client/ (클라이언트 전용)

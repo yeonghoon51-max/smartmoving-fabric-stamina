@@ -1,10 +1,12 @@
 package com.smartmoving.mixin;
 
 import com.smartmoving.SmartMoving;
+import com.smartmoving.config.SmartMovingConfig;
 import com.smartmoving.state.SmartMovingPlayer;
 import com.smartmoving.state.SmartMovingState;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -40,12 +42,20 @@ public abstract class PlayerEntityMixin implements SmartMovingPlayer {
     @Inject(method = "tick", at = @At("TAIL"))
     private void smartmoving$tick(CallbackInfo ci) {
         PlayerEntity self = (PlayerEntity) (Object) this;
-        if (smartmoving$state.climbing) {
+        boolean climbing = smartmoving$state.climbing;
+        if (climbing) {
+            if (self.getWorld() instanceof ServerWorld world) {
+                // 원작 handleCrash(): 떨어지다가 벽을 잡으면 (2칸 넘게 떨어졌을 때) 대미지
+                SmartMovingConfig cfg = SmartMoving.CONFIG;
+                if (!smartmoving$state.serverWasClimbing && self.fallDistance >= cfg.freeClimbFallDamageStartDistance) {
+                    float damage = (float) Math.ceil((self.fallDistance - cfg.freeClimbFallDamageStartDistance) * cfg.freeClimbFallDamageFactor);
+                    if (damage > 0) self.damage(world, self.getDamageSources().fall(), damage);
+                }
+                self.addExhaustion(cfg.climbHungerExhaustion);
+            }
             // 벽을 타는 동안에는 낙하 거리가 쌓이지 않는다 (서버의 낙하 대미지 판정용).
             self.onLanding();
-            if (!self.getWorld().isClient) {
-                self.addExhaustion(SmartMoving.CONFIG.climbHungerExhaustion);
-            }
         }
+        smartmoving$state.serverWasClimbing = climbing;
     }
 }

@@ -3,6 +3,7 @@ package com.smartmoving.mixin;
 import com.smartmoving.SmartMoving;
 import com.smartmoving.config.SmartMovingConfig;
 import com.smartmoving.logic.MovementPhysics;
+import com.smartmoving.logic.climb.FreeClimbing;
 import com.smartmoving.state.SmartMovingPlayer;
 import com.smartmoving.state.SmartMovingState;
 import net.minecraft.entity.LivingEntity;
@@ -12,6 +13,7 @@ import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -20,7 +22,23 @@ public abstract class LivingEntityMixin {
     /** 바닐라 달리기 속도 배율 */
     private static final float VANILLA_SPRINT_FACTOR = 1.3f;
 
-    /** 벽 타기 / 슬라이딩 / 헤드 점프 중에는 바닐라 이동 대신 직접 만든 물리를 쓴다. */
+    /** 벽 타기 준비: 이전 틱 벽 타기 상태로 이동 입력을 바꾸고 상태를 초기화한다 (원작 moveEntityWithHeading 앞부분). */
+    @ModifyVariable(method = "travel", at = @At("HEAD"), argsOnly = true)
+    private Vec3d smartmoving$beforeTravel(Vec3d movementInput) {
+        if (!((Object) this instanceof PlayerEntity player)) return movementInput;
+        if (!player.isLogicalSideForUpdatingMovement() || !player.getWorld().isClient) return movementInput;
+        return FreeClimbing.beforeTravel(player, SmartMovingPlayer.of(player), movementInput);
+    }
+
+    /** 벽 타기: 바닐라 이동이 끝난 뒤 원작처럼 손/발로 잡을 곳을 찾아 세로 속도를 정한다. */
+    @Inject(method = "travel", at = @At("RETURN"))
+    private void smartmoving$afterTravel(Vec3d movementInput, CallbackInfo ci) {
+        if (!((Object) this instanceof PlayerEntity player)) return;
+        if (!player.isLogicalSideForUpdatingMovement() || !player.getWorld().isClient) return;
+        FreeClimbing.afterTravel(player, SmartMovingPlayer.of(player));
+    }
+
+    /** 슬라이딩 / 헤드 점프 중에는 바닐라 이동 대신 직접 만든 물리를 쓴다. */
     @Inject(method = "travel", at = @At("HEAD"), cancellable = true)
     private void smartmoving$travel(Vec3d movementInput, CallbackInfo ci) {
         if (!((Object) this instanceof PlayerEntity player)) return;

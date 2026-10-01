@@ -2,18 +2,19 @@ package com.smartmoving.logic;
 
 import com.smartmoving.SmartMoving;
 import com.smartmoving.config.SmartMovingConfig;
+import com.smartmoving.logic.climb.FreeClimbing;
 import com.smartmoving.state.SmartMovingState;
 import net.minecraft.entity.MovementType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
 /**
  * 바닐라 travel() 대신 실행되는 이동 물리.
  * 자기 캐릭터를 조종하는 쪽(클라이언트)에서만 호출된다.
  *
- * <p>슬라이딩/헤드 점프는 원작 SmartMovingSelf.moveEntityWithHeading() 의 포트다.
+ * <p>벽 타기는 바닐라 이동을 그대로 쓰고 이동 직후에 logic.climb.FreeClimbing 이 세로 속도를 정한다.
+ * 슬라이딩/헤드 점프는 원작 SmartMovingSelf.moveEntityWithHeading() 의 포트다.
  * 순서도 바닐라와 같다: 입력 가속 → 이동 → 중력과 감속.
  */
 public final class MovementPhysics {
@@ -30,9 +31,8 @@ public final class MovementPhysics {
      * @return true 면 바닐라 travel 을 취소한다
      */
     public static boolean travel(PlayerEntity player, SmartMovingState state, Vec3d input) {
-        if (state.climbing) {
-            climb(player, input);
-            return true;
+        if (state.sliding || state.headJumping) {
+            FreeClimbing.reset(state);
         }
         if (state.sliding) {
             slide(player, input);
@@ -43,29 +43,6 @@ public final class MovementPhysics {
             return true;
         }
         return false;
-    }
-
-    /** 벽 타기: 중력 없이 앞키=위, 뒤키=아래, 좌우키=벽을 따라 옆으로 */
-    private static void climb(PlayerEntity player, Vec3d input) {
-        SmartMovingConfig cfg = SmartMoving.CONFIG;
-        Direction facing = player.getHorizontalFacing();
-        Direction left = facing.rotateYCounterclockwise();
-
-        double up = 0;
-        if (input.z > 0) up = cfg.climbUpSpeed;
-        else if (input.z < 0) up = -cfg.climbDownSpeed;
-
-        double side = Math.signum(input.x) * cfg.climbSideSpeed;
-        // 벽 쪽으로 살짝 밀어서 붙어 있게 한다.
-        double stick = 0.04;
-        Vec3d motion = new Vec3d(
-                facing.getOffsetX() * stick + left.getOffsetX() * side,
-                up,
-                facing.getOffsetZ() * stick + left.getOffsetZ() * side);
-
-        player.move(MovementType.SELF, motion);
-        player.setVelocity(Vec3d.ZERO);
-        player.onLanding(); // 낙하 거리 초기화
     }
 
     /**

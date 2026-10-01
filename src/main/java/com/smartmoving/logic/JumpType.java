@@ -12,8 +12,24 @@ public enum JumpType {
     SLIDE_DOWN,
     /** 벽 타다가 위로 */
     CLIMB_UP,
+    CLIMB_UP_HANDS_ONLY,
     /** 벽 타다가 뒤로 */
     CLIMB_BACK_UP,
+    CLIMB_BACK_UP_HANDS_ONLY,
     /** 벽 타다가 잡기 누른 채 뒤로 = 헤드 점프 */
-    CLIMB_BACK_HEAD
+    CLIMB_BACK_HEAD,
+    CLIMB_BACK_HEAD_HANDS_ONLY;
+
+    public boolean isClimb() {
+        return ordinal() >= CLIMB_UP.ordinal();
+    }
+
+    public boolean isClimbBack() {
+        return this == CLIMB_BACK_UP || this == CLIMB_BACK_UP_HANDS_ONLY
+                || this == CLIMB_BACK_HEAD || this == CLIMB_BACK_HEAD_HANDS_ONLY;
+    }
+
+    public boolean isHandsOnly() {
+        return this == CLIMB_UP_HANDS_ONLY || this == CLIMB_BACK_UP_HANDS_ONLY || this == CLIMB_BACK_HEAD_HANDS_ONLY;
+    }
 }

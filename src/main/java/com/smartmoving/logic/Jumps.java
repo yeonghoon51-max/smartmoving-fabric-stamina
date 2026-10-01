@@ -26,14 +26,17 @@ public final class Jumps {
         SmartMovingConfig cfg = SmartMoving.CONFIG;
 
         boolean up = type != JumpType.SLIDE_DOWN;
-        boolean head = type == JumpType.HEAD_UP || type == JumpType.CLIMB_BACK_HEAD;
+        boolean head = type == JumpType.HEAD_UP || type == JumpType.CLIMB_BACK_HEAD
+                || type == JumpType.CLIMB_BACK_HEAD_HANDS_ONLY;
         boolean charged = type == JumpType.CHARGE_UP;
 
         // ---- 지침 확인 ----
         float gain = 0f;
         float stop = Float.MAX_VALUE;
         boolean exhaustionApplies = true;
-        switch (type) {
+        if (type.isClimb()) {
+            exhaustionApplies = false;
+        } else switch (type) {
             case SLIDE_DOWN -> {
                 gain = cfg.slideExhaustionGain;
                 stop = cfg.slideExhaustionStop;
@@ -43,8 +46,6 @@ public final class Jumps {
                 gain = cfg.jumpChargeExhaustionGain * ratio;
                 stop = cfg.jumpChargeExhaustionStop - gain;
             }
-            // 원작 기본값에서 벽 점프는 지침이 없다 (move.jump.climb.exhaustion = false)
-            case CLIMB_UP, CLIMB_BACK_UP, CLIMB_BACK_HEAD -> exhaustionApplies = false;
             default -> {
                 if (speed == MoveSpeed.SPRINTING) {
                     gain = cfg.sprintJumpExhaustionGain;
@@ -57,6 +58,7 @@ public final class Jumps {
                 }
             }
         }
+        // 원작 기본값에서 벽 점프는 지침이 없다 (move.jump.climb.exhaustion = false)
         if (exhaustionApplies && !Exhaustion.allows(state, stop, gain)) {
             return false;
         }
@@ -143,15 +145,8 @@ public final class Jumps {
     }
 
     private static double horizontalFactor(JumpType type, MoveSpeed speed, SmartMovingConfig cfg) {
-        switch (type) {
-            case CLIMB_UP:
-                return 1.0;
-            case CLIMB_BACK_UP:
-            case CLIMB_BACK_HEAD:
-                return cfg.climbBackJumpHorizontal;
-            default:
-                break;
-        }
+        if (type.isClimbBack()) return cfg.climbBackJumpHorizontal;
+        if (type.isClimb()) return 1.0;
         return switch (speed) {
             case SPRINTING -> cfg.sprintJumpHorizontalFactor;
             case RUNNING -> cfg.runJumpHorizontalFactor;
@@ -161,10 +156,10 @@ public final class Jumps {
     }
 
     private static double verticalFactor(JumpType type, SmartMovingConfig cfg) {
-        return switch (type) {
-            case CLIMB_BACK_UP, CLIMB_BACK_HEAD -> cfg.climbBackJumpVertical;
-            default -> 1.0;
-        };
+        double result = type.isClimbBack() ? cfg.climbBackJumpVertical : 1.0;
+        // 원작 move.jump.climb.*.hands.only.vertical.factor = 0.8
+        if (type.isHandsOnly()) result *= cfg.climbJumpHandsOnlyVerticalFactor;
+        return result;
     }
 
     private static double maxHorizontalMotion(MoveSpeed speed, SmartMovingConfig cfg) {

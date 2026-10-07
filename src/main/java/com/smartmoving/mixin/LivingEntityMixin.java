@@ -3,6 +3,7 @@ package com.smartmoving.mixin;
 import com.smartmoving.SmartMoving;
 import com.smartmoving.config.SmartMovingConfig;
 import com.smartmoving.logic.MovementPhysics;
+import com.smartmoving.logic.WallJumping;
 import com.smartmoving.logic.climb.FreeClimbing;
 import com.smartmoving.state.SmartMovingPlayer;
 import com.smartmoving.state.SmartMovingState;
@@ -30,12 +31,14 @@ public abstract class LivingEntityMixin {
         return FreeClimbing.beforeTravel(player, SmartMovingPlayer.of(player), movementInput);
     }
 
-    /** 벽 타기: 바닐라 이동이 끝난 뒤 원작처럼 손/발로 잡을 곳을 찾아 세로 속도를 정한다. */
+    /** 바닐라 이동이 끝난 뒤: 벽 타기(손/발로 잡을 곳을 찾아 세로 속도 결정), 그다음 벽 점프. 원작 순서 그대로. */
     @Inject(method = "travel", at = @At("RETURN"))
     private void smartmoving$afterTravel(Vec3d movementInput, CallbackInfo ci) {
         if (!((Object) this instanceof PlayerEntity player)) return;
         if (!player.isLogicalSideForUpdatingMovement() || !player.getWorld().isClient) return;
-        FreeClimbing.afterTravel(player, SmartMovingPlayer.of(player));
+        SmartMovingState state = SmartMovingPlayer.of(player);
+        FreeClimbing.afterTravel(player, state);
+        WallJumping.afterTravel(player, state);
     }
 
     /** 슬라이딩 / 헤드 점프 중에는 바닐라 이동 대신 직접 만든 물리를 쓴다. */

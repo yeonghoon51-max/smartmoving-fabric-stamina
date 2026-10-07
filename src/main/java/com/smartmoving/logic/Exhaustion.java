@@ -54,6 +54,10 @@ public final class Exhaustion {
         max = Math.max(max, cfg.runJumpExhaustionStop + cfg.runJumpExhaustionGain);
         if (cfg.enableChargedJump) max = Math.max(max, cfg.jumpChargeExhaustionStop);
         if (cfg.enableSliding) max = Math.max(max, cfg.slideExhaustionStop + cfg.slideExhaustionGain);
+        if (cfg.enableWallJump && cfg.wallJumpExhaustion) {
+            max = Math.max(max, cfg.wallUpJumpExhaustionStop + cfg.wallUpJumpExhaustionGain);
+            if (cfg.enableWallHeadJump) max = Math.max(max, cfg.wallHeadJumpExhaustionStop + cfg.wallHeadJumpExhaustionGain);
+        }
         if (cfg.enableClimbing && cfg.climbExhaustion) max = Math.max(max, cfg.climbExhaustionStop);
         return Math.max(1f, max);
     }

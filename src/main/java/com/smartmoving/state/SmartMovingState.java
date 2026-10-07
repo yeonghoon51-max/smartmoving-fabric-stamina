@@ -57,6 +57,9 @@ public class SmartMovingState {
     public boolean prevSneakKey;
     public boolean prevGrabKey;
     public boolean prevJumpKey;
+    public boolean prevLeftKey;
+    public boolean prevRightKey;
+    public boolean prevBackKey;
     /** 벽 점프 직후 다시 벽에 달라붙지 않도록 하는 쿨다운 */
     public int grabCooldown;
 
@@ -78,6 +81,24 @@ public class SmartMovingState {
     public double travelHorizontalDamping = 0.91;
     public double lastHorizontalCollisionX;
     public double lastHorizontalCollisionZ;
+    // ---- 벽 점프 / 옆·뒤 점프 ----
+    /** 원작 wantWallJumping: 이번 틱에 벽에 부딪히면 벽 점프를 한다 */
+    public boolean wantWallJumping;
+    /** 원작 continueWallJumping: 벽 점프 후 점프 키를 계속 누르면 다음 벽에서도 튕긴다 */
+    public boolean continueWallJumping;
+    public int wallJumpCount;
+    /** 이번 이동에서 부딪힌 벽 방향 (yaw 각도, 없으면 NaN) */
+    public float horizontalCollisionAngle = Float.NaN;
+    /** 틱 시작 시점에 이미 벽에 붙어 있었다 (원작 wasCollidedHorizontally) */
+    public boolean wasCollidedHorizontally;
+    /** 원작 jumpMotionX/Z: 틱 시작 시점의 수평 속도 (이동 후 점프 계산용) */
+    public double jumpMotionX;
+    public double jumpMotionZ;
+    /** 좌/우/뒤 키 두 번 누르기 카운터 (원작 leftJumpCount 등: 양수 = 대기 틱, -1 = 발동, -2 = 보류) */
+    public int leftJumpCount;
+    public int rightJumpCount;
+    public int backJumpCount;
+
     /** 지난 틱 위치 (원작 getTickDistance) */
     public double lastTickX;
     public double lastTickY;

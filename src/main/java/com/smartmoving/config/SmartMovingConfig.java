@@ -82,6 +82,35 @@ public class SmartMovingConfig {
     public float headFallDamageStartDistance = 2f;
     public float headFallDamageFactor = 2f;
 
+    // ---- 옆/뒤 점프: 땅에서 좌·우·뒤 키를 빠르게 두 번 ----
+    public boolean enableSideJump = true;           // move.jump.angle.side
+    public boolean enableBackJump = true;           // move.jump.angle.back
+    public float angleJumpHorizontalFactor = 0.3f;  // move.jump.angle.horizontal.factor
+    public float angleJumpVerticalFactor = 0.2f;    // move.jump.angle.vertical.factor
+    /** 두 번 누르는 간격 (틱) (move.jump.angle.double.click.ticks) */
+    public int angleJumpDoubleClickTicks = 3;
+
+    // ---- 벽 점프: 공중에서 점프 키를 두 번 누르고 누른 채 벽에 부딪히면 튕겨 나간다 ----
+    public boolean enableWallJump = true;           // move.jump.wall
+    public boolean enableWallHeadJump = true;       // move.jump.wall.head (잡기 키를 누르고 있으면)
+    /** 점프 키를 두 번 눌러야 한다 (move.jump.wall.double.click). false 면 한 번 */
+    public boolean wallJumpDoubleClick = true;
+    public int wallJumpDoubleClickTicks = 3;
+    public float wallUpJumpVerticalFactor = 0.4f;   // move.jump.wall.vertical.factor
+    public float wallUpJumpHorizontalFactor = 0.15f;
+    public float wallHeadJumpVerticalFactor = 0.3f; // 벽 점프 높이에 곱해진다
+    public float wallHeadJumpHorizontalFactor = 0.15f;
+    /** 이 거리 이상 떨어지는 중에는 벽 점프를 할 수 없다 */
+    public float wallUpJumpFallMaximumDistance = 2f;
+    public float wallHeadJumpFallMaximumDistance = 3f;
+    /** 벽과 거의 수직이면 이 각도(도) 안에서 똑바로 튕겨 나간다 (move.jump.wall.orthogonal.tolerance) */
+    public float wallJumpOrthogonalTolerance = 5f;
+    public boolean wallJumpExhaustion = true;       // move.jump.wall.exhaustion
+    public float wallUpJumpExhaustionGain = 40f;
+    public float wallUpJumpExhaustionStop = 60f;
+    public float wallHeadJumpExhaustionGain = 20f;
+    public float wallHeadJumpExhaustionStop = 80f;
+
     // ---- 슬라이딩: 달리면서 잡기 + 웅크리기 ----
     public float slideExhaustionGain = 10f;     // move.jump.slide.exhaustion.gain.factor
     public float slideExhaustionStop = 90f;     // move.jump.slide.exhaustion.stop.factor

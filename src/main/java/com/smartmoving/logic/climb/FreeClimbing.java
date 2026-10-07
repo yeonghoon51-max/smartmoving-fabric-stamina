@@ -206,7 +206,7 @@ public final class FreeClimbing {
                 // 꼭대기에 매달림: 점프하면 위로 뛰어오른다
                 boolean jumped = state.jumpStartKey && Jumps.tryJump(player, state,
                         feetClimbing != FeetClimbing.NONE ? JumpType.CLIMB_UP : JumpType.CLIMB_UP_HANDS_ONLY,
-                        MoveSpeed.STANDING, null);
+                        MoveSpeed.STANDING, null, state.jumpMotionX, state.jumpMotionZ);
                 if (!jumped) {
                     setClimbSpeed(player, state, cfg, HOLD_MOTION);
                 }
@@ -252,7 +252,8 @@ public final class FreeClimbing {
                             : (handsOnly ? JumpType.CLIMB_BACK_UP_HANDS_ONLY : JumpType.CLIMB_BACK_UP);
 
                     float jumpAngle = player.getYaw() + 180F;
-                    if (Jumps.tryJump(player, state, type, MoveSpeed.STANDING, jumpAngle)) {
+                    if (Jumps.tryJump(player, state, type, MoveSpeed.STANDING, jumpAngle,
+                            state.jumpMotionX, state.jumpMotionZ)) {
                         state.climbing = false;
                         state.climbHolding = false;
                         player.setYaw(jumpAngle);

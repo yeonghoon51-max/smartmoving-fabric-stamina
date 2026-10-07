@@ -32,7 +32,8 @@ public final class ClientMovementController {
     /** 이번 틱의 키 입력 */
     private record Input(boolean forward, boolean back, boolean left, boolean right, boolean jump,
                          boolean sneak, boolean sprint, boolean grab,
-                         boolean sneakStart, boolean grabStart, boolean jumpStart) {
+                         boolean sneakStart, boolean grabStart, boolean jumpStart,
+                         boolean leftStart, boolean rightStart, boolean backStart) {
         boolean moving() {
             return forward || back || left || right;
         }
@@ -54,12 +55,22 @@ public final class ClientMovementController {
         boolean sprint = options.sprintKey.isPressed();
         boolean grab = SmartMovingKeys.GRAB.isPressed() || (cfg.grabUsesSprintKey && sprint);
         boolean jump = options.jumpKey.isPressed();
-        Input in = new Input(options.forwardKey.isPressed(), options.backKey.isPressed(),
-                options.leftKey.isPressed(), options.rightKey.isPressed(), jump, sneak, sprint, grab,
-                sneak && !state.prevSneakKey, grab && !state.prevGrabKey, jump && !state.prevJumpKey);
+        boolean left = options.leftKey.isPressed();
+        boolean right = options.rightKey.isPressed();
+        boolean back = options.backKey.isPressed();
+        Input in = new Input(options.forwardKey.isPressed(), back, left, right, jump, sneak, sprint, grab,
+                sneak && !state.prevSneakKey, grab && !state.prevGrabKey, jump && !state.prevJumpKey,
+                left && !state.prevLeftKey, right && !state.prevRightKey, back && !state.prevBackKey);
         state.prevSneakKey = sneak;
         state.prevGrabKey = grab;
         state.prevJumpKey = jump;
+        state.prevLeftKey = left;
+        state.prevRightKey = right;
+        state.prevBackKey = back;
+
+        // 원작 beforeOnUpdate(): 틱 시작 시점에 이미 벽에 붙어 있었나
+        state.wasCollidedHorizontally = player.horizontalCollision;
+        state.horizontalCollisionAngle = Float.NaN;
 
         state.maxExhaustionForAction = Float.MAX_VALUE;
         state.maxExhaustionToStartAction = Float.MAX_VALUE;
@@ -85,6 +96,10 @@ public final class ClientMovementController {
         tickHeadJumpAndSlide(player, state, cfg, in, onGround, horizontalSpeedSquare);
         tickCrawl(player, state, cfg, in, onGround, special);
         tickClimb(player, state, cfg, in, onGround, special);
+        tickWallAndAngleJumps(player, state, cfg, in, onGround, special);
+        Vec3d jumpMotion = player.getVelocity();
+        state.jumpMotionX = jumpMotion.x;
+        state.jumpMotionZ = jumpMotion.z;
         if (state.handlesJumps) {
             handleJumping(player, state, cfg, in, onGround, standing);
         }
@@ -243,6 +258,66 @@ public final class ClientMovementController {
         state.grabKey = in.grab();
     }
 
+    /** 원작 updateEntityActionState() 의 벽 점프 / 옆·뒤 점프 판정 */
+    private static void tickWallAndAngleJumps(ClientPlayerEntity player, SmartMovingState state, SmartMovingConfig cfg,
+                                              Input in, boolean onGround, boolean special) {
+        // ---- 벽 점프 ----
+        if (state.continueWallJumping && (onGround || state.climbing || !in.jump())) {
+            state.continueWallJumping = false;
+        }
+
+        boolean canWallJumping = cfg.enableWallJump && !state.headJumping && !onGround && !state.climbing && !special;
+        boolean triggerWallJumping = false;
+        if (cfg.wallJumpDoubleClick) {
+            if (canWallJumping) {
+                if (in.jumpStart()) {
+                    if (state.wallJumpCount == 0) {
+                        state.wallJumpCount = cfg.wallJumpDoubleClickTicks;
+                    } else {
+                        triggerWallJumping = true;
+                        state.wallJumpCount = 0;
+                    }
+                } else if (state.wallJumpCount > 0) {
+                    state.wallJumpCount--;
+                }
+            } else {
+                state.wallJumpCount = 0;
+            }
+        } else {
+            triggerWallJumping = in.jumpStart();
+        }
+
+        state.wantWallJumping = canWallJumping
+                && (triggerWallJumping || state.continueWallJumping
+                || (state.wantWallJumping && in.jump() && !player.horizontalCollision));
+
+        // ---- 옆/뒤 점프: 키를 빠르게 두 번 ----
+        boolean canAngleJump = onGround && !state.crawling && !state.climbing && !state.sliding && !special;
+        boolean canSideJump = cfg.enableSideJump && canAngleJump;
+        boolean canLeftJump = canSideJump && !in.right();
+        boolean canRightJump = canSideJump && !in.left();
+        boolean canBackJump = cfg.enableBackJump && canAngleJump && !in.forward() && !state.fast && !state.running;
+
+        state.leftJumpCount = countDoubleClick(canLeftJump, in.leftStart(), state.leftJumpCount, cfg);
+        state.rightJumpCount = countDoubleClick(canRightJump, in.rightStart(), state.rightJumpCount, cfg);
+        state.backJumpCount = countDoubleClick(canBackJump, in.backStart(), state.backJumpCount, cfg);
+
+        // 옆 + 뒤를 함께 두 번 누르면 대각선 뒤로 (한쪽이 아직 대기 중이면 잠깐 보류: -2)
+        if (state.rightJumpCount == -2 && state.backJumpCount <= 0) state.rightJumpCount = -1;
+        if (state.leftJumpCount == -2 && state.backJumpCount <= 0) state.leftJumpCount = -1;
+        if (state.backJumpCount == -2 && (state.leftJumpCount <= 0 || state.rightJumpCount <= 0)) state.backJumpCount = -1;
+
+        if (state.rightJumpCount == -1 && state.backJumpCount > 0) state.rightJumpCount = -2;
+        if (state.leftJumpCount == -1 && state.backJumpCount > 0) state.leftJumpCount = -2;
+        if (state.backJumpCount == -1 && (state.leftJumpCount > 0 || state.rightJumpCount > 0)) state.backJumpCount = -2;
+    }
+
+    private static int countDoubleClick(boolean can, boolean started, int count, SmartMovingConfig cfg) {
+        if (!can) return 0;
+        if (started) return count == 0 ? cfg.angleJumpDoubleClickTicks : -1;
+        return count > 0 ? count - 1 : count;
+    }
+
     /** 원작 handleJumping(): 일반 점프, 모아 뛰기, 헤드 점프 */
     private static void handleJumping(ClientPlayerEntity player, SmartMovingState state, SmartMovingConfig cfg,
                                       Input in, boolean onGround, boolean standing) {
@@ -303,6 +378,30 @@ public final class ClientMovementController {
         if (jump && !state.blockJumpTillButtonRelease && !jumpCharging && !headJumpCharging) {
             Jumps.tryJump(player, state, JumpType.UP, speed, null);
         }
+
+        // ---- 옆/뒤 점프 ----
+        int left = 0;
+        int back = 0;
+        if (state.leftJumpCount == -1) left++;
+        if (state.rightJumpCount == -1) left--;
+        if (state.backJumpCount == -1) back++;
+
+        if (left != 0 || back != 0) {
+            int angle;
+            if (left > 0) angle = back == 0 ? 270 : 225;
+            else if (left < 0) angle = back == 0 ? 90 : 135;
+            else angle = 180;
+
+            // 원작 getJumpSpeed(): 각도 점프는 달리기 속도로 치지 않는다
+            MoveSpeed angleSpeed = sneaking && onGround ? MoveSpeed.SNEAKING
+                    : standing ? MoveSpeed.STANDING
+                    : MoveSpeed.WALKING;
+            Jumps.tryJump(player, state, JumpType.ANGLE, angleSpeed, player.getYaw() + angle);
+
+            state.leftJumpCount = 0;
+            state.rightJumpCount = 0;
+            state.backJumpCount = 0;
+        }
     }
 
     /** 원작 handleExhaustion(): 행동하면 오르고, 배고픔이 충분하면 쉬는 동안 내려간다 */
@@ -360,6 +459,8 @@ public final class ClientMovementController {
         state.fast = false;
         state.climbFast = false;
         state.climbHolding = false;
+        state.wantWallJumping = false;
+        state.continueWallJumping = false;
         state.wantClimbUp = false;
         state.wantClimbDown = false;
         state.jumpCharge = 0;

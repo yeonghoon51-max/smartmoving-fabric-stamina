@@ -23,11 +23,28 @@ public final class Jumps {
 
     public static boolean tryJump(PlayerEntity player, SmartMovingState state, JumpType type, MoveSpeed speed,
                                   Float angleDegrees) {
+        Vec3d v = player.getVelocity();
+        return tryJump(player, state, type, speed, angleDegrees, v.x, v.z);
+    }
+
+    /**
+     * @param jumpMotionX 원작 jumpMotionX/Z: 점프 계산에 쓰는 수평 속도.
+     *                    이동이 끝난 뒤의 점프(벽 점프 등)에서는 벽에 부딪히기 전 속도를 넘긴다.
+     */
+    public static boolean tryJump(PlayerEntity player, SmartMovingState state, JumpType type, MoveSpeed speed,
+                                  Float angleDegrees, double jumpMotionX, double jumpMotionZ) {
         SmartMovingConfig cfg = SmartMoving.CONFIG;
+
+        // 벽에 이미 붙어 있을 때의 벽 점프: 위로 뜨지 않는다
+        boolean noVertical = false;
+        if (type == JumpType.WALL_UP_SLIDE || type == JumpType.WALL_HEAD_SLIDE) {
+            type = type == JumpType.WALL_UP_SLIDE ? JumpType.WALL_UP : JumpType.WALL_HEAD;
+            noVertical = true;
+        }
 
         boolean up = type != JumpType.SLIDE_DOWN;
         boolean head = type == JumpType.HEAD_UP || type == JumpType.CLIMB_BACK_HEAD
-                || type == JumpType.CLIMB_BACK_HEAD_HANDS_ONLY;
+                || type == JumpType.CLIMB_BACK_HEAD_HANDS_ONLY || type == JumpType.WALL_HEAD;
         boolean charged = type == JumpType.CHARGE_UP;
 
         // ---- 지침 확인 ----
@@ -35,7 +52,12 @@ public final class Jumps {
         float stop = Float.MAX_VALUE;
         boolean exhaustionApplies = true;
         if (type.isClimb()) {
+            // 원작 기본값에서 벽 타기 중 점프는 지침이 없다 (move.jump.climb.exhaustion = false)
             exhaustionApplies = false;
+        } else if (type == JumpType.WALL_UP || type == JumpType.WALL_HEAD) {
+            exhaustionApplies = cfg.wallJumpExhaustion;
+            gain = type == JumpType.WALL_UP ? cfg.wallUpJumpExhaustionGain : cfg.wallHeadJumpExhaustionGain;
+            stop = type == JumpType.WALL_UP ? cfg.wallUpJumpExhaustionStop : cfg.wallHeadJumpExhaustionStop;
         } else switch (type) {
             case SLIDE_DOWN -> {
                 gain = cfg.slideExhaustionGain;
@@ -58,7 +80,6 @@ public final class Jumps {
                 }
             }
         }
-        // 원작 기본값에서 벽 점프는 지침이 없다 (move.jump.climb.exhaustion = false)
         if (exhaustionApplies && !Exhaustion.allows(state, stop, gain)) {
             return false;
         }
@@ -87,7 +108,7 @@ public final class Jumps {
         double motionZ = velocity.z;
 
         Double maxHorizontalMotion = null;
-        double horizontalMotion = Math.sqrt(motionX * motionX + motionZ * motionZ);
+        double horizontalMotion = Math.sqrt(jumpMotionX * jumpMotionX + jumpMotionZ * jumpMotionZ);
         double verticalMotion = -0.078 + 0.498 * verticalFactor * chargeFactor;
 
         if (horizontalFactor > 1.0 && !player.horizontalCollision) {
@@ -110,9 +131,10 @@ public final class Jumps {
 
         if (angleDegrees != null) {
             double rad = Math.toRadians(angleDegrees);
+            boolean reset = type == JumpType.WALL_UP || type == JumpType.WALL_HEAD;
             double horizontal = Math.max(horizontalMotion, horizontalFactor);
-            motionX += -Math.sin(rad) * horizontal;
-            motionZ += Math.cos(rad) * horizontal;
+            motionX = jumpMoving(jumpMotionX, -Math.sin(rad), reset, horizontal, horizontalFactor);
+            motionZ = jumpMoving(jumpMotionZ, Math.cos(rad), reset, horizontal, horizontalFactor);
             horizontalMotion = 0;
             verticalMotion = verticalFactor;
         }
@@ -128,7 +150,7 @@ public final class Jumps {
             motionZ = Math.signum(motionZ) * absZ;
         }
 
-        if (up) {
+        if (up && !noVertical) {
             motionY = verticalMotion;
             state.sprintJump = state.fast;
         }
@@ -144,7 +166,18 @@ public final class Jumps {
         return true;
     }
 
+    /** 원작 getJumpMoving: 벽 점프(reset)는 벽 쪽으로 가던 속도를 버리고 튕겨 나간다 */
+    private static double jumpMoving(double actual, double move, boolean reset, double horizontal,
+                                     double horizontalFactor) {
+        if (!reset) return actual + move * horizontal;
+        if (Math.signum(actual) != Math.signum(move)) return move * horizontalFactor;
+        return Math.max(Math.abs(actual), Math.abs(move) * horizontal) * Math.signum(move);
+    }
+
     private static double horizontalFactor(JumpType type, MoveSpeed speed, SmartMovingConfig cfg) {
+        if (type == JumpType.ANGLE) return cfg.angleJumpHorizontalFactor;
+        if (type == JumpType.WALL_UP) return cfg.wallUpJumpHorizontalFactor;
+        if (type == JumpType.WALL_HEAD) return cfg.wallHeadJumpHorizontalFactor;
         if (type.isClimbBack()) return cfg.climbBackJumpHorizontal;
         if (type.isClimb()) return 1.0;
         return switch (speed) {
@@ -156,6 +189,9 @@ public final class Jumps {
     }
 
     private static double verticalFactor(JumpType type, SmartMovingConfig cfg) {
+        if (type == JumpType.ANGLE) return cfg.angleJumpVerticalFactor;
+        if (type == JumpType.WALL_UP) return cfg.wallUpJumpVerticalFactor;
+        if (type == JumpType.WALL_HEAD) return cfg.wallUpJumpVerticalFactor * cfg.wallHeadJumpVerticalFactor;
         double result = type.isClimbBack() ? cfg.climbBackJumpVertical : 1.0;
         // 원작 move.jump.climb.*.hands.only.vertical.factor = 0.8
         if (type.isHandsOnly()) result *= cfg.climbJumpHandsOnlyVerticalFactor;

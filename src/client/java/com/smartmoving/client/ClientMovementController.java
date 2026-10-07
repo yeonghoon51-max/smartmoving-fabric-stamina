@@ -253,6 +253,9 @@ public final class ClientMovementController {
                 || (wantClimb && !state.crawling && (in.sneak() || state.crawlToggled));
         state.climbHolding = wantClimbHolding && state.climbing;
 
+        // 원작 wantClimbCeiling: 잡기 키, 웅크리지 않음
+        state.wantClimbCeiling = cfg.enableCeilingClimbing && !special && in.grab() && !in.sneak();
+
         // 이동 직후 벽 타기 판정에서 쓴다 (꼭대기에서 점프, 뒤로 점프)
         state.jumpStartKey = in.jumpStart();
         state.grabKey = in.grab();
@@ -422,6 +425,9 @@ public final class ClientMovementController {
             else if (in.back()) additional = cfg.climbDownExhaustionGain;
             else additional = cfg.climbStrafeExhaustionGain;
         }
+        if (state.ceilingClimbing && !standing && cfg.ceilingClimbExhaustion) {
+            additional += cfg.ceilingClimbExhaustionGain;
+        }
         if (state.fast || state.climbFast) {
             if (additional == 0f) additional = 1f;
             additional *= cfg.sprintExhaustionGain;
@@ -431,7 +437,7 @@ public final class ClientMovementController {
         if (state.exhaustion > 0f && player.getHungerManager().getFoodLevel() > cfg.exhaustionLossFoodMinimum) {
             boolean sneaking = in.sneak() && !state.crawling && !state.sliding;
             state.exhaustion -= Exhaustion.lossFactor(onGround, standing, still, sneaking,
-                    state.running, state.fast, state.climbing);
+                    state.running, state.fast, state.climbing || state.ceilingClimbing);
         }
         state.exhaustion = Math.max(0f, state.exhaustion);
     }
@@ -450,6 +456,8 @@ public final class ClientMovementController {
     private static void resetAll(SmartMovingState state) {
         state.crawling = false;
         state.climbing = false;
+        state.ceilingClimbing = false;
+        state.wantClimbCeiling = false;
         state.sliding = false;
         state.headJumping = false;
         state.aerodynamic = false;

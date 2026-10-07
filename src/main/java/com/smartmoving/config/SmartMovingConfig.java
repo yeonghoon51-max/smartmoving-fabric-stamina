@@ -149,6 +149,16 @@ public class SmartMovingConfig {
     /** 뒤로 점프할 때 잡기 키를 누르고 있으면 헤드 점프 (move.jump.climb.back.head.on.grab) */
     public boolean climbJumpBackHeadOnGrab = true;
 
+    // ---- 천장 매달리기: 철창이나 닫힌 다락문 아래에서 잡기 키 ----
+    public boolean enableCeilingClimbing = true;        // move.climb.ceiling
+    /** 매달린 채 움직이는 속도 배율 (move.climb.ceiling.speed.factor) */
+    public float ceilingClimbingSpeedFactor = 0.2f;
+    /** 천장 매달리기 지침 (move.climb.ceiling.exhaustion, 원작 기본값 꺼짐) */
+    public boolean ceilingClimbExhaustion = false;
+    public float ceilingClimbExhaustionStart = 40f;
+    public float ceilingClimbExhaustionStop = 60f;
+    public float ceilingClimbExhaustionGain = 1.3f;
+
     // ---- 사다리 ----
     public float ladderUpSpeed = 0.3f;
 

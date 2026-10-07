@@ -3,7 +3,7 @@ package com.smartmoving.state;
 /**
  * 플레이어 한 명의 스마트 무빙 상태.
  *
- * <p>위쪽 네 개(crawling/climbing/sliding/headJumping)는 네트워크로 동기화되는 값이고,
+ * <p>위쪽 다섯 개(crawling/climbing/sliding/headJumping/ceilingClimbing)는 네트워크로 동기화되는 값이고,
  * 나머지는 자기 캐릭터를 조종하는 클라이언트에서만 쓰는 값이다.
  */
 public class SmartMovingState {
@@ -11,6 +11,7 @@ public class SmartMovingState {
     public static final byte FLAG_CLIMBING = 1 << 1;
     public static final byte FLAG_SLIDING = 1 << 2;
     public static final byte FLAG_HEAD_JUMPING = 1 << 3;
+    public static final byte FLAG_CEILING_CLIMBING = 1 << 4;
 
     // ---- 동기화되는 상태 ----
     public boolean crawling;
@@ -18,6 +19,8 @@ public class SmartMovingState {
     public boolean sliding;
     /** 머리부터 날아가는 중 (헤드 점프, 또는 슬라이딩하다 떨어짐) */
     public boolean headJumping;
+    /** 천장(철창, 닫힌 다락문)에 매달린 중 */
+    public boolean ceilingClimbing;
 
     // ---- 서버 전용 ----
     /** 헤드 점프가 끝난 서버 틱 (머리부터 착지할 때 낙하 대미지 계산용) */
@@ -73,6 +76,9 @@ public class SmartMovingState {
     public boolean neighborClimbing;
     /** 원작 isFast 의 벽 타기 부분 (isClimbSprinting) */
     public boolean climbFast;
+    /** 원작 wantClimbCeiling: 잡기 키를 누르고 있고 웅크리지 않았다 */
+    public boolean wantClimbCeiling;
+    public boolean wasCeilingClimbingThisTravel;
     /** 이번 틱에 점프 키를 새로 눌렀다 / 잡기 키를 누르고 있다 (이동 후 벽 타기 판정에서 쓴다) */
     public boolean jumpStartKey;
     public boolean grabKey;
@@ -112,6 +118,7 @@ public class SmartMovingState {
         if (climbing) f |= FLAG_CLIMBING;
         if (sliding) f |= FLAG_SLIDING;
         if (headJumping) f |= FLAG_HEAD_JUMPING;
+        if (ceilingClimbing) f |= FLAG_CEILING_CLIMBING;
         return f;
     }
 
@@ -120,6 +127,7 @@ public class SmartMovingState {
         climbing = (f & FLAG_CLIMBING) != 0;
         sliding = (f & FLAG_SLIDING) != 0;
         headJumping = (f & FLAG_HEAD_JUMPING) != 0;
+        ceilingClimbing = (f & FLAG_CEILING_CLIMBING) != 0;
     }
 
     /** 누워 있는 자세(기어가기, 슬라이딩, 헤드 점프)가 필요한가. 원작의 heightOffset = -1 */

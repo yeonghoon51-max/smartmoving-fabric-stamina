@@ -69,6 +69,11 @@ public final class FreeClimbing {
         state.travelHorizontalDamping = slipperiness * 0.91F;
 
         Vec3d result = input;
+        // 천장에 매달려 있으면 느리게 움직인다 (원작 move.climb.ceiling.speed.factor)
+        if (state.ceilingClimbing) {
+            result = new Vec3d(input.x * SmartMoving.CONFIG.ceilingClimbingSpeedFactor, input.y,
+                    input.z * SmartMoving.CONFIG.ceilingClimbingSpeedFactor);
+        }
         // 내려가는 중 아무 키도 안 누르면 벽 쪽으로 당겨서 붙어 있게 한다.
         if (state.climbing && input.x == 0 && input.z == 0 && state.wantClimbDown && state.neighborClimbing
                 && !(Math.abs(player.getX() - state.lastHorizontalCollisionX) < 0.05
@@ -77,6 +82,7 @@ public final class FreeClimbing {
         }
 
         state.wasClimbingThisTravel = state.climbing;
+        state.wasCeilingClimbingThisTravel = state.ceilingClimbing;
         reset(state);
         return result;
     }
@@ -84,27 +90,18 @@ public final class FreeClimbing {
     public static void reset(SmartMovingState state) {
         state.climbing = false;
         state.neighborClimbing = false;
+        state.ceilingClimbing = false;
     }
 
-    /** travel() 끝. 바닐라 이동이 끝난 직후. */
+    /** travel() 끝. 바닐라 이동이 끝난 직후. 원작 handleLand(): 벽 타기 → 천장 매달리기 → 중력 */
     public static void afterTravel(PlayerEntity player, SmartMovingState state) {
         SmartMovingConfig cfg = SmartMoving.CONFIG;
-        if (!cfg.enableClimbing) return;
         // 사다리/덩굴은 바닐라가 처리한다.
         if (player.isClimbing() || player.hasNoGravity() || player.hasStatusEffect(StatusEffects.LEVITATION)) return;
-        if (player.fallDistance > cfg.freeClimbFallMaximumDistance) return;
-        // 기어가며 오르기 / 슬라이딩하다 벽 잡기는 아직 포트하지 않았다.
-        if (state.crawling || state.sliding || state.headJumping) return;
-        if (!state.wantClimbUp && !state.wantClimbDown) return;
 
-        boolean exhaustionEnabled = cfg.climbExhaustion && Exhaustion.enabled();
-        if (exhaustionEnabled) {
-            state.maxExhaustionForAction = Math.min(state.maxExhaustionForAction, cfg.climbExhaustionStop);
-            state.maxExhaustionToStartAction = Math.min(state.maxExhaustionToStartAction, cfg.climbExhaustionStart);
-            boolean allowed = state.exhaustion <= cfg.climbExhaustionStop
-                    && (state.wasClimbingThisTravel || state.exhaustion <= cfg.climbExhaustionStart);
-            if (!allowed) return;
-        }
+        boolean freeClimb = canFreeClimb(player, state, cfg);
+        boolean ceilingClimb = CeilingClimbing.couldClimb(state, cfg);
+        if (!freeClimb && !ceilingClimb) return;
 
         // 바닐라가 이미 적용한 중력과 감속을 되돌린다.
         Vec3d v = player.getVelocity();
@@ -117,11 +114,28 @@ public final class FreeClimbing {
         double damping = state.travelHorizontalDamping;
         player.setVelocity(v.x / damping, motionY, v.z / damping);
 
-        handleClimbing(player, state, cfg);
+        if (freeClimb) handleClimbing(player, state, cfg);
+        if (ceilingClimb) CeilingClimbing.handle(player, state, cfg);
 
         // 원작 setLandMotions(): 중력과 감속
         Vec3d after = player.getVelocity();
         player.setVelocity(after.x * damping, (after.y - gravity) * 0.98F, after.z * damping);
+    }
+
+    private static boolean canFreeClimb(PlayerEntity player, SmartMovingState state, SmartMovingConfig cfg) {
+        if (!cfg.enableClimbing) return false;
+        if (player.fallDistance > cfg.freeClimbFallMaximumDistance) return false;
+        // 기어가며 오르기 / 슬라이딩하다 벽 잡기는 아직 포트하지 않았다.
+        if (state.crawling || state.sliding || state.headJumping) return false;
+        if (!state.wantClimbUp && !state.wantClimbDown) return false;
+
+        if (cfg.climbExhaustion && Exhaustion.enabled()) {
+            state.maxExhaustionForAction = Math.min(state.maxExhaustionForAction, cfg.climbExhaustionStop);
+            state.maxExhaustionToStartAction = Math.min(state.maxExhaustionToStartAction, cfg.climbExhaustionStart);
+            return state.exhaustion <= cfg.climbExhaustionStop
+                    && (state.wasClimbingThisTravel || state.exhaustion <= cfg.climbExhaustionStart);
+        }
+        return true;
     }
 
     private static void handleClimbing(PlayerEntity player, SmartMovingState state, SmartMovingConfig cfg) {

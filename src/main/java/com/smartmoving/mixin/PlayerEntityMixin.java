@@ -57,5 +57,9 @@ public abstract class PlayerEntityMixin implements SmartMovingPlayer {
             self.onLanding();
         }
         smartmoving$state.serverWasClimbing = climbing;
+        if (smartmoving$state.ceilingClimbing) {
+            // 천장에 매달린 동안에도 낙하 거리가 쌓이지 않는다.
+            self.onLanding();
+        }
     }
 }

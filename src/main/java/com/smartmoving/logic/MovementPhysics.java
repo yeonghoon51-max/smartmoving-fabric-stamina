@@ -35,7 +35,7 @@ public final class MovementPhysics {
             FreeClimbing.reset(state);
         }
         if (state.sliding) {
-            slide(player, input);
+            slide(player, state, input);
             return true;
         }
         if (state.headJumping) {
@@ -49,7 +49,7 @@ public final class MovementPhysics {
      * 슬라이딩: 입력 가속 없이 관성으로 미끄러진다.
      * 바닥 블록이 미끄러울수록(얼음) 덜 감속하고, 좌우 키로 조금씩 방향을 튼다.
      */
-    private static void slide(PlayerEntity player, Vec3d input) {
+    private static void slide(PlayerEntity player, SmartMovingState state, Vec3d input) {
         SmartMovingConfig cfg = SmartMoving.CONFIG;
         Vec3d v = player.getVelocity();
         double motionX = v.x;
@@ -78,6 +78,8 @@ public final class MovementPhysics {
 
         player.setVelocity(motionX, v.y, motionZ);
         player.move(MovementType.SELF, player.getVelocity());
+        // 원작 handleLand(): 이동 직후 벽 타기 판정 (슬라이딩하다 벽을 잡으면 기어가는 자세로 오른다)
+        FreeClimbing.afterMove(player, state);
         applyGravityAndDamping(player, damping);
     }
 

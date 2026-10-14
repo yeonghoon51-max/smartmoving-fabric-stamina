@@ -4,16 +4,15 @@ package com.smartmoving.logic.climb;
 
 import com.smartmoving.config.SmartMovingConfig;
 import com.smartmoving.logic.Exhaustion;
+import com.smartmoving.logic.Solids;
 import com.smartmoving.state.SmartMovingState;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.TrapdoorBlock;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.World;
 
 /**
@@ -53,7 +52,7 @@ public final class CeilingClimbing {
         double jgap = 1D - jd + j;
         if (bottom) jgap++;
 
-        double actuallySolidHeight = minSolidBetween(player, jd, jd + 0.6, 0.2);
+        double actuallySolidHeight = Solids.minBetween(player, jd, jd + 0.6, 0.2);
         if (jgap < 1.9 && actuallySolidHeight < jd + 0.5) {
             double motionY;
             if (jgap > 1.2) motionY = 0.12;
@@ -71,23 +70,5 @@ public final class CeilingClimbing {
     private static boolean supportsCeilingClimbing(BlockState state) {
         if (state.isOf(Blocks.IRON_BARS)) return true;
         return state.getBlock() instanceof TrapdoorBlock && !state.get(TrapdoorBlock.OPEN);
-    }
-
-    /** 원작 getMinPlayerSolidBetween: 플레이어 위 [yMin, yMax] 구간에서 가장 낮은 단단한 면의 높이 */
-    private static double minSolidBetween(PlayerEntity player, double yMin, double yMax, double horizontalTolerance) {
-        Box bb = player.getBoundingBox();
-        Box probe = new Box(bb.minX - horizontalTolerance, yMin, bb.minZ - horizontalTolerance,
-                bb.maxX + horizontalTolerance, yMax, bb.maxZ + horizontalTolerance);
-        double result = yMax;
-        for (VoxelShape shape : player.getWorld().getBlockCollisions(player, probe)) {
-            for (Box box : shape.getBoundingBoxes()) {
-                if (box.maxX >= probe.minX && box.minX <= probe.maxX
-                        && box.maxY >= yMin && box.minY <= yMax
-                        && box.maxZ >= probe.minZ && box.minZ <= probe.maxZ) {
-                    result = Math.min(result, box.minY);
-                }
-            }
-        }
-        return Math.max(result, yMin);
     }
 }

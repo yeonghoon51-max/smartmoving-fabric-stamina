@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.entity.EntityPose;
 import net.minecraft.server.network.ServerPlayerEntity;
 
 public final class SmartMovingNetworking {
@@ -22,7 +23,13 @@ public final class SmartMovingNetworking {
             SmartMovingState state = SmartMovingPlayer.of(player);
             byte old = state.flags();
             boolean wasHeadJumping = state.headJumping;
+            boolean wasLow = state.wantsLowPose();
             state.applyFlags(payload.flags());
+            if (!wasLow && state.wantsLowPose() && !player.isSpectator() && !player.hasVehicle()
+                    && !player.getAbilities().flying && !player.isGliding() && !player.isSleeping()) {
+                // 납작해진 몸으로 바로 다음 이동(틈으로 들어가기)을 하므로, 서버의 충돌 상자도 지금 바꿔 둔다.
+                player.setPose(EntityPose.SWIMMING);
+            }
             if (wasHeadJumping && !state.headJumping) {
                 state.headJumpEndAge = player.age;
             }

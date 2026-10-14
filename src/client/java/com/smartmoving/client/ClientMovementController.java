@@ -96,6 +96,7 @@ public final class ClientMovementController {
         tickHeadJumpAndSlide(player, state, cfg, in, onGround, horizontalSpeedSquare);
         tickCrawl(player, state, cfg, in, onGround, special);
         tickClimb(player, state, cfg, in, onGround, special);
+        ClimbCrawling.tick(player, state, in.forward() && !in.back(), in.sneak() || state.crawlToggled, special);
         tickWallAndAngleJumps(player, state, cfg, in, onGround, special);
         Vec3d jumpMotion = player.getVelocity();
         state.jumpMotionX = jumpMotion.x;
@@ -230,6 +231,7 @@ public final class ClientMovementController {
 
         boolean start = in.grabStart() && in.sneak() && onGround;
         boolean keep = state.crawling && (in.sneak() || state.crawlToggled || !WallProbe.canStand(player));
+        state.wasCrawling = state.crawling;
         state.crawling = canCrawl && !state.sliding && !state.headJumping && (state.crawlToggled || start || keep);
     }
 
@@ -240,9 +242,15 @@ public final class ClientMovementController {
     private static void tickClimb(ClientPlayerEntity player, SmartMovingState state, SmartMovingConfig cfg,
                                   Input in, boolean onGround, boolean special) {
         boolean forward = in.forward() && !in.back();
+
+        // 잡기 키로 기어가기를 막 시작했으면, 그 키를 계속 누르고 벽에 부딪혀도 오르지 않고 기어간다.
+        state.wantCrawlNotClimb = (state.wantCrawlNotClimb || (in.grabStart() && !state.wasCrawling))
+                && in.grab() && forward && state.crawling && player.horizontalCollision;
+
         boolean wouldWantClimb = (in.grab() || (state.climbHolding && in.sneak()))
                 && (!state.sliding || in.grab() && forward)
-                && !state.headJumping;
+                && !state.headJumping
+                && !state.wantCrawlNotClimb;
         boolean wantClimb = cfg.enableClimbing && !special && wouldWantClimb;
         boolean wantCrawl = cfg.enableCrawling && (state.crawling || (in.grabStart() && in.sneak() && onGround));
 
@@ -251,6 +259,7 @@ public final class ClientMovementController {
 
         boolean wantClimbHolding = (state.climbHolding && in.sneak())
                 || (wantClimb && !state.crawling && (in.sneak() || state.crawlToggled));
+        state.wantClimbHolding = wantClimbHolding;
         state.climbHolding = wantClimbHolding && state.climbing;
 
         // 원작 wantClimbCeiling: 잡기 키, 웅크리지 않음
@@ -467,6 +476,9 @@ public final class ClientMovementController {
         state.fast = false;
         state.climbFast = false;
         state.climbHolding = false;
+        state.climbCrawling = false;
+        state.crawlClimbing = false;
+        state.climbIntoCount = 0;
         state.wantWallJumping = false;
         state.continueWallJumping = false;
         state.wantClimbUp = false;

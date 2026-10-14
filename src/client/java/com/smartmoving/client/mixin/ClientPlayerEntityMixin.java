@@ -18,6 +18,17 @@ public abstract class ClientPlayerEntityMixin {
         ClientMovementController.tick((ClientPlayerEntity) (Object) this);
     }
 
+    /**
+     * 틈으로 기어 오르는 중에는 납작한 자세여도 바닐라 기어가기 감속(0.3배)을 하지 않는다.
+     * 원작도 이때는 기어가기 속도 배율을 쓰지 않았다.
+     */
+    @Inject(method = "shouldSlowDown", at = @At("RETURN"), cancellable = true)
+    private void smartmoving$noSlowWhileClimbCrawling(CallbackInfoReturnable<Boolean> cir) {
+        if (SmartMovingPlayer.of((ClientPlayerEntity) (Object) this).climbCrawling) {
+            cir.setReturnValue(false);
+        }
+    }
+
     /** 지쳐 있으면 달릴 수 없다. */
     @Inject(method = "canSprint", at = @At("RETURN"), cancellable = true)
     private void smartmoving$noSprintWhenExhausted(CallbackInfoReturnable<Boolean> cir) {

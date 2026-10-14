@@ -3,7 +3,7 @@ package com.smartmoving.state;
 /**
  * 플레이어 한 명의 스마트 무빙 상태.
  *
- * <p>위쪽 다섯 개(crawling/climbing/sliding/headJumping/ceilingClimbing)는 네트워크로 동기화되는 값이고,
+ * <p>위쪽 일곱 개(crawling ~ crawlClimbing)는 네트워크로 동기화되는 값이고,
  * 나머지는 자기 캐릭터를 조종하는 클라이언트에서만 쓰는 값이다.
  */
 public class SmartMovingState {
@@ -12,6 +12,8 @@ public class SmartMovingState {
     public static final byte FLAG_SLIDING = 1 << 2;
     public static final byte FLAG_HEAD_JUMPING = 1 << 3;
     public static final byte FLAG_CEILING_CLIMBING = 1 << 4;
+    public static final byte FLAG_CLIMB_CRAWLING = 1 << 5;
+    public static final byte FLAG_CRAWL_CLIMBING = 1 << 6;
 
     // ---- 동기화되는 상태 ----
     public boolean crawling;
@@ -21,6 +23,13 @@ public class SmartMovingState {
     public boolean headJumping;
     /** 천장(철창, 닫힌 다락문)에 매달린 중 */
     public boolean ceilingClimbing;
+    /**
+     * 원작 isClimbCrawling: 벽에 매달린 채 윗몸만 앞의 낮은 틈으로 밀어 넣는 중.
+     * 몸(충돌 상자)은 납작해지고 원래 몸의 윗부분 높이에 있다 (원작 heightOffset = -1).
+     */
+    public boolean climbCrawling;
+    /** 원작 isCrawlClimbing: 기어가던 자세 그대로 턱을 오르는 중 */
+    public boolean crawlClimbing;
 
     // ---- 서버 전용 ----
     /** 헤드 점프가 끝난 서버 틱 (머리부터 착지할 때 낙하 대미지 계산용) */
@@ -76,6 +85,17 @@ public class SmartMovingState {
     public boolean neighborClimbing;
     /** 원작 isFast 의 벽 타기 부분 (isClimbSprinting) */
     public boolean climbFast;
+    /** 원작 wantClimbHolding: 잡기 + 웅크리기로 매달리려고 한다 (기어가는 중 제외) */
+    public boolean wantClimbHolding;
+    /** 원작 wantCrawlNotClimb: 잡기 키로 기어가기를 막 시작했으면 벽에 부딪혀도 오르지 않는다 */
+    public boolean wantCrawlNotClimb;
+    /** 원작 wasCrawling: 이번 틱 판정 전에 기어가고 있었다 */
+    public boolean wasCrawling;
+    /** 원작 hasClimbGap / hasClimbCrawlGap: 손/발 위로 일어설 수 있는 틈 / 기어야 들어가는 틈이 있다 */
+    public boolean hasClimbGap;
+    public boolean hasClimbCrawlGap;
+    /** 원작 climbIntoCount: 틈으로 들어간 뒤 몇 틱 동안 매달린 자세를 유지한다 */
+    public int climbIntoCount;
     /** 원작 wantClimbCeiling: 잡기 키를 누르고 있고 웅크리지 않았다 */
     public boolean wantClimbCeiling;
     public boolean wasCeilingClimbingThisTravel;
@@ -119,6 +139,8 @@ public class SmartMovingState {
         if (sliding) f |= FLAG_SLIDING;
         if (headJumping) f |= FLAG_HEAD_JUMPING;
         if (ceilingClimbing) f |= FLAG_CEILING_CLIMBING;
+        if (climbCrawling) f |= FLAG_CLIMB_CRAWLING;
+        if (crawlClimbing) f |= FLAG_CRAWL_CLIMBING;
         return f;
     }
 
@@ -128,10 +150,12 @@ public class SmartMovingState {
         sliding = (f & FLAG_SLIDING) != 0;
         headJumping = (f & FLAG_HEAD_JUMPING) != 0;
         ceilingClimbing = (f & FLAG_CEILING_CLIMBING) != 0;
+        climbCrawling = (f & FLAG_CLIMB_CRAWLING) != 0;
+        crawlClimbing = (f & FLAG_CRAWL_CLIMBING) != 0;
     }
 
-    /** 누워 있는 자세(기어가기, 슬라이딩, 헤드 점프)가 필요한가. 원작의 heightOffset = -1 */
+    /** 누워 있는 자세(기어가기, 슬라이딩, 헤드 점프, 틈으로 기어 오르기)가 필요한가. 원작의 heightOffset = -1 */
     public boolean wantsLowPose() {
-        return crawling || sliding || headJumping;
+        return crawling || sliding || headJumping || climbCrawling || crawlClimbing;
     }
 }

@@ -36,6 +36,7 @@ public final class FreeClimbing {
     private static final double HOLD_MOTION = 0.08D;
     private static final double SINK_DOWN_MOTION = 0.05D;
     private static final double CLIMB_DOWN_MOTION = 0.01D;
+    private static final double CATCH_CRAWL_GAP_MOTION = 0.17D;
 
     /** 원작 rotation 순서 그대로 (같은 값이면 먼저 찾은 쪽이 남는다) */
     private static final Orientation[] ORTHOGONALS = {Orientation.PZ, Orientation.NZ, Orientation.ZP, Orientation.ZN};
@@ -122,11 +123,19 @@ public final class FreeClimbing {
         player.setVelocity(after.x * damping, (after.y - gravity) * 0.98F, after.z * damping);
     }
 
+    /**
+     * 직접 만든 이동 물리(슬라이딩)에서 이동 직후, 중력 전에 부른다. 슬라이딩하다 벽을 잡는 경우.
+     */
+    public static void afterMove(PlayerEntity player, SmartMovingState state) {
+        if (player.isClimbing() || player.hasNoGravity()) return;
+        SmartMovingConfig cfg = SmartMoving.CONFIG;
+        if (canFreeClimb(player, state, cfg)) handleClimbing(player, state, cfg);
+    }
+
     private static boolean canFreeClimb(PlayerEntity player, SmartMovingState state, SmartMovingConfig cfg) {
         if (!cfg.enableClimbing) return false;
         if (player.fallDistance > cfg.freeClimbFallMaximumDistance) return false;
-        // 기어가며 오르기 / 슬라이딩하다 벽 잡기는 아직 포트하지 않았다.
-        if (state.crawling || state.sliding || state.headJumping) return false;
+        if (state.headJumping) return false;
         if (!state.wantClimbUp && !state.wantClimbDown) return false;
 
         if (cfg.climbExhaustion && Exhaustion.enabled()) {
@@ -144,6 +153,11 @@ public final class FreeClimbing {
         double jd = player.getBoundingBox().minY;
         double kd = player.getZ();
 
+        // 작은 자세(기어가기, 슬라이딩, 틈으로 기어 오르기)에서는 충돌 상자가 원래 몸의 윗부분이다.
+        // 원작처럼 1칸 아래를 "원래 발" 높이로 보고 손/발 위치를 계산한다.
+        boolean isSmallClimbing = state.crawling || state.sliding;
+        if (state.climbCrawling || state.crawlClimbing || isSmallClimbing) jd -= 1D;
+
         int i = MathHelper.floor(id);
         int j = MathHelper.floor(jd);
         int k = MathHelper.floor(kd);
@@ -157,14 +171,18 @@ public final class FreeClimbing {
         FEET_GAP.reset();
 
         for (Orientation orientation : ORTHOGONALS) {
-            orientation.seekClimbGap(rotation, world, i, id, jh, k, kd, false, false, false,
+            orientation.seekClimbGap(rotation, world, i, id, jh, k, kd,
+                    state.climbCrawling, state.crawlClimbing, isSmallClimbing,
                     INOUT_HANDS, INOUT_FEET, HANDS_GAP, FEET_GAP);
         }
         state.neighborClimbing = INOUT_HANDS[0] != HandsClimbing.NONE || INOUT_FEET[0] != FeetClimbing.NONE;
 
-        for (Orientation orientation : DIAGONALS) {
-            orientation.seekClimbGap(rotation, world, i, id, jh, k, kd, false, false, false,
-                    INOUT_HANDS, INOUT_FEET, HANDS_GAP, FEET_GAP);
+        if (!isSmallClimbing) {
+            for (Orientation orientation : DIAGONALS) {
+                orientation.seekClimbGap(rotation, world, i, id, jh, k, kd,
+                        state.climbCrawling, state.crawlClimbing, false,
+                        INOUT_HANDS, INOUT_FEET, HANDS_GAP, FEET_GAP);
+            }
         }
 
         HandsClimbing handsClimbing = INOUT_HANDS[0];
@@ -172,6 +190,8 @@ public final class FreeClimbing {
 
         boolean hasClimbGap = HANDS_GAP.canStand || FEET_GAP.canStand;
         boolean hasClimbCrawlGap = HANDS_GAP.mustCrawl || FEET_GAP.mustCrawl;
+        state.hasClimbGap = hasClimbGap;
+        state.hasClimbCrawlGap = hasClimbCrawlGap;
 
         // 사다리 맨 아래를 손으로 잡았는데 사다리 뒤가 비어 있으면 잡을 수 없다.
         if (handsClimbing == HandsClimbing.BOTTOM_HOLD
@@ -196,6 +216,12 @@ public final class FreeClimbing {
         if (!feetClimbing.isRelevant() && !handsClimbing.isRelevant()) return;
 
         if (state.wantClimbUp) {
+            // 슬라이딩하다 손으로 잡을 곳을 만나면 기어가는 자세로 벽을 잡는다.
+            if (state.sliding && handsClimbing.isRelevant()) {
+                state.sliding = false;
+                state.crawling = true;
+            }
+
             handsClimbing = handsClimbing.toUp();
 
             if (feetClimbing == FeetClimbing.FAST_UP
@@ -286,6 +312,9 @@ public final class FreeClimbing {
     private static void setClimbSpeed(PlayerEntity player, SmartMovingState state, SmartMovingConfig cfg, double value) {
         state.climbing = true;
 
+        // 틈으로 막 들어간 뒤에는 잠깐 매달린 채로 있는다.
+        if (state.climbIntoCount > 0) value = HOLD_MOTION;
+
         if (value != HOLD_MOTION) {
             float factor = speedFactor(player);
             if (state.climbFast) factor *= cfg.sprintFactor;
@@ -294,6 +323,11 @@ public final class FreeClimbing {
                 value = (value - HOLD_MOTION) * cfg.freeClimbingUpSpeedFactor * factor + HOLD_MOTION;
             } else {
                 value = HOLD_MOTION - (HOLD_MOTION - value) * cfg.freeClimbingDownSpeedFactor * factor;
+            }
+
+            // 아주 낮은 틈을 넘어가 버리지 않도록 (원작 CatchCrawlGapMotion)
+            if (state.hasClimbCrawlGap && state.climbCrawling && value > HOLD_MOTION) {
+                value = Math.min(CATCH_CRAWL_GAP_MOTION, value);
             }
         }
 

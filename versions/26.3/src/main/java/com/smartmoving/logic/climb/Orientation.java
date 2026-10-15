@@ -6,6 +6,7 @@ import net.minecraft.world.level.block.BasePressurePlateBlock;
 import net.minecraft.world.level.block.SignBlock;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.CarpetBlock;
 import net.minecraft.world.level.block.DoorBlock;
@@ -1165,7 +1166,8 @@ public final class Orientation {
                 || block instanceof BasePressurePlateBlock) {
             return false;
         }
-        if (!state.blocksMotion()) return false;
+        // 26.x 에는 blocksMotion() 이 없어서 그 내용(단단함, 거미줄·대나무 싹 제외)을 그대로 쓴다.
+        if (!state.isSolid() || block == Blocks.COBWEB || block == Blocks.BAMBOO_SAPLING) return false;
         return !state.getCollisionShape(world, new BlockPos(x, y, z)).isEmpty();
     }
 

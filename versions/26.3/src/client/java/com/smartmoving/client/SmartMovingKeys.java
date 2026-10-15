@@ -4,7 +4,6 @@ import com.smartmoving.SmartMoving;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import com.mojang.blaze3d.platform.InputConstants;
-import org.lwjgl.glfw.GLFW;
 
 /** 조작 설정 화면의 "Smart Moving" 항목에 나오는 키들 */
 public final class SmartMovingKeys {
@@ -16,6 +15,8 @@ public final class SmartMovingKeys {
      * 기본은 "지정 안 함" + 설정 grabUsesSprintKey=true (달리기 키가 잡기도 겸함)로 같은 조작감을 낸다.
      */
     public static KeyMapping GRAB;
+    /** 키 지정 안 함 (GLFW_KEY_UNKNOWN) */
+    private static final int UNBOUND = -1;
     /** 기어가기 켜기/끄기 */
     public static KeyMapping CRAWL;
 
@@ -24,8 +25,8 @@ public final class SmartMovingKeys {
 
     public static void register() {
         GRAB = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping("key.smartmoving.grab", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
+                new KeyMapping("key.smartmoving.grab", InputConstants.Type.KEYBOARD, UNBOUND, CATEGORY));
         CRAWL = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping("key.smartmoving.crawl", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY));
+                new KeyMapping("key.smartmoving.crawl", InputConstants.Type.KEYBOARD, InputConstants.KEY_Z, CATEGORY));
     }
 }

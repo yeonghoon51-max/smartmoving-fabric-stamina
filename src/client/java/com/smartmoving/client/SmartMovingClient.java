@@ -15,6 +15,7 @@ public class SmartMovingClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         SmartMovingKeys.register();
+        SmartAnimations.register();
 
         HudElementRegistry.attachElementAfter(VanillaHudElements.FOOD_BAR, SmartMoving.id("stamina"), ExhaustionHud::render);
 

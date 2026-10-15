@@ -22,6 +22,9 @@ Divisor의 **Smart Moving** (Forge/ModLoader, 마지막 버전 16.3 for MC 1.8.9
 | 기어서 턱 오르기 | 기어가면서(또는 슬라이딩하다가) 잡을 곳을 보고 **Ctrl + Shift + 앞** | 납작한 자세 그대로 턱을 오름. 몸 아래가 비면 일어섬 |
 | 천장 매달리기 | **철창이나 닫힌 다락문** 바로 아래에서 **Ctrl** 유지 (Shift는 떼고) | 매달려서 천천히 이동. 손을 떼면 떨어짐 |
 | 옆/뒤 점프 | 땅에서 **A·D·S를 빠르게 두 번** | 그쪽으로 낮게 뜀. 옆+뒤를 같이 두 번 누르면 대각선 뒤로 |
+| 헤엄치기 | 깊은 물에서 앞으로 | 머리를 물 위에 내놓고 평영. 수면 높이에 맞춰 떠 있음. Shift = 아래로, Ctrl = 빠르게. 물가 벽에 대고 점프하면 물 밖으로 뛰어오름 |
+| 잠수 | 물속에서 | 보는 방향(위아래 포함)으로 나아감. 점프 = 위로, Shift = 아래로, 가만히 있으면 그 자리에 떠 있음 |
+| 원작 비행 | 크리에이티브 비행 중 | 보는 방향으로 날고 몸은 엎드린 자세. 점프/Shift = 위/아래, Ctrl = 빠르게 |
 | 빠른 사다리 | 사다리에서 앞키 | 바닐라보다 빠르게 올라감 |
 
 ### 여우 무빙
@@ -49,7 +52,9 @@ Divisor의 **Smart Moving** (Forge/ModLoader, 마지막 버전 16.3 for MC 1.8.9
 
 - **벽 타기**: 원작의 손/발 잡기 판정(Orientation)과 속도 규칙을 그대로 옮겼습니다.
 - **틈으로 기어 오르기**: 원작은 충돌 상자의 아래 1칸을 잘라냈습니다. 이 포트는 바닐라의 납작한 자세(높이 0.6)를 쓰고 몸을 1칸 올려 같은 자리에 둡니다. 그래서 상자가 원작(0.8)보다 조금 낮습니다.
-- **아직 없는 기능**: 수영·다이빙, 비행, 원작 애니메이션.
+- **수영/잠수**: 원작은 헤엄칠 때도 충돌 상자를 납작하게 했습니다. 이 포트는 수면에서 헤엄칠 때는 서 있는 상자(머리가 물 위), 잠수할 때만 납작한 자세를 씁니다. 그래서 수면에서 헤엄칠 때 몸이 원작처럼 눕지 않고 서서 헤엄치는 모습입니다. 용암 속 수영은 원작 기본값처럼 꺼져 있습니다.
+- **원작 비행**: 바닐라 엘리트라처럼 납작한 자세를 몸 위치 그대로 씁니다. 땅에 닿으면 바닐라처럼 비행이 끝납니다.
+- **애니메이션**: 원작 Smart Render 의 팔·다리·머리 공식을 옮겼습니다. 원작은 몸통을 여러 조각으로 나눠 따로 돌렸는데 바닐라 모델에는 그런 조각이 없어서, 몸 전체의 기울기는 바닐라의 엎드린 자세에 맡깁니다.
 - **지침이 배고픔으로 바뀌는 부분**: 원작은 지침이 회복될 때 배고픔을 조금 소모했습니다. 이 포트에는 없습니다.
 
 ## 설정
@@ -87,18 +92,23 @@ src/main/java/com/smartmoving/        (서버+클라이언트 공용)
   logic/climb/FreeClimbing.java       벽 타기 (원작 handleClimbing)
   logic/climb/Orientation.java        손/발로 잡을 곳 찾기 (원작 Orientation)
   logic/WallProbe.java                일어설 공간이 있는지 검사
+  logic/SmartSwimming.java            수영·잠수 (원작 handleSwimming)
+  logic/SmartFlying.java              원작 비행 (원작 handleAlternativeFlying)
+  logic/MoveFlying.java               보는 방향으로 가속 (원작 moveFlying)
   logic/Jumps.java                    원작 tryJump 포트 (모든 점프 공식)
   logic/Exhaustion.java               원작 지침 계산
   network/                            클라이언트↔서버 상태 동기화 패킷
-  mixin/PlayerEntityMixin.java        자세 강제, 벽 잡을 때 낙하 대미지·낙하거리 초기화
+  mixin/PlayerEntityMixin.java        자세 강제, 수영·비행 가로채기, 벽 잡을 때 낙하 대미지
   mixin/LivingEntityMixin.java        travel 가로채기, 바닐라 점프 대체, 달리기 속도, 헤드 착지 대미지
 
 src/client/java/com/smartmoving/client/ (클라이언트 전용)
   SmartMovingClient.java              진입점 (키, HUD, 패킷 수신)
   ClientMovementController.java       키 입력 → 상태 결정 (핵심 로직)
   ExhaustionHud.java                  원작 HUD (번개 = 지침, 다이아 = 점프 충전)
+  ClimbCrawling.java                  틈으로 기어 오르기 / 기어서 턱 오르기
+  SmartAnimations.java                원작 Smart Render 애니메이션 공식
   mixin/ClientPlayerEntityMixin.java  매 틱 컨트롤러 호출, 지치면 달리기 금지
-  mixin/BipedEntityModelMixin.java    벽타기 팔 애니메이션
+  mixin/BipedEntityModelMixin.java    원작 애니메이션 적용 (SmartAnimations)
 ```
 
 ## 라이선스

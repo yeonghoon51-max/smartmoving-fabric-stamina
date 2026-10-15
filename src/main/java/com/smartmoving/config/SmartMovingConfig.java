@@ -159,6 +159,26 @@ public class SmartMovingConfig {
     public float ceilingClimbExhaustionStop = 60f;
     public float ceilingClimbExhaustionGain = 1.3f;
 
+    // ---- 수영 / 잠수 ----
+    /** 물 위에서 헤엄치기 (move.swim) */
+    public boolean enableSwimming = true;
+    public float swimSpeedFactor = 1f;          // move.swim.speed.factor
+    /** 헤엄치다 웅크리기 = 아래로 (move.swim.down.sneak) */
+    public boolean swimDownOnSneak = true;
+    /** 물속에서 보는 방향으로 잠수하기 (move.dive) */
+    public boolean enableDiving = true;
+    public float diveSpeedFactor = 1f;          // move.dive.speed.factor
+    /** 잠수 중 웅크리기 = 아래로 (move.dive.down.sneak) */
+    public boolean diveDownOnSneak = true;
+    /** 잠수 방향이 위아래 시선도 따른다 (move.dive.control.vertical) */
+    public boolean diveControlVertical = true;
+
+    // ---- 원작 비행: 크리에이티브 비행을 보는 방향으로 나는 비행으로 바꾼다 ----
+    public boolean enableSmartFlying = true;    // move.fly
+    public float flyingSpeedFactor = 1f;        // move.fly.speed.factor
+    /** 비행 방향이 위아래 시선도 따른다 (move.fly.control.vertical) */
+    public boolean flyControlVertical = true;
+
     // ---- 사다리 ----
     public float ladderUpSpeed = 0.3f;
 

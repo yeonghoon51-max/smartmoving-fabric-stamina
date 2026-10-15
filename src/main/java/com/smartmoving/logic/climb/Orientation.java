@@ -283,6 +283,25 @@ public final class Orientation {
                 outFeetClimbGap, CLIMB_GAP_OUTER_TEMP);
     }
 
+    /**
+     * 원작 getClimbingOrientations() + isTunnelAhead(): 바라보는 방향(직교·대각) 중 하나라도
+     * 앞 칸의 j+1 이 비어 있고 j+2 가 막혀 있으면 (낮은 굴) true.
+     */
+    public static boolean isTunnelAhead(World w, float rotation, int i, int j, int k) {
+        for (List<Orientation> list : List.of(ORTHOGONALS, DIAGONALS)) {
+            for (Orientation orientation : list) {
+                if (!orientation.isRotationForClimbing(rotation)) continue;
+                BlockPos ahead = new BlockPos(i + orientation.i, j + 1, k + orientation.k);
+                BlockPos above = ahead.up();
+                if (w.getBlockState(ahead).getCollisionShape(w, ahead).isEmpty()
+                        && !w.getBlockState(above).getCollisionShape(w, above).isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public static boolean isLadder(BlockState state) {
         return state.getBlock() instanceof LadderBlock;
     }

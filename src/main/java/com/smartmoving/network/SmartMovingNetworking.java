@@ -21,7 +21,7 @@ public final class SmartMovingNetworking {
         ServerPlayNetworking.registerGlobalReceiver(StateC2SPayload.ID, (payload, context) -> {
             ServerPlayerEntity player = context.player();
             SmartMovingState state = SmartMovingPlayer.of(player);
-            byte old = state.flags();
+            int old = state.flags();
             boolean wasHeadJumping = state.headJumping;
             boolean wasLow = state.wantsLowPose();
             state.applyFlags(payload.flags());
@@ -41,7 +41,7 @@ public final class SmartMovingNetworking {
         // 새로 시야에 들어온 플레이어에게 현재 상태를 알려준다.
         EntityTrackingEvents.START_TRACKING.register((tracked, viewer) -> {
             if (tracked instanceof ServerPlayerEntity target) {
-                byte flags = SmartMovingPlayer.of(target).flags();
+                int flags = SmartMovingPlayer.of(target).flags();
                 if (flags != 0 && ServerPlayNetworking.canSend(viewer, StateSyncS2CPayload.ID)) {
                     ServerPlayNetworking.send(viewer, new StateSyncS2CPayload(target.getId(), flags));
                 }
@@ -49,7 +49,7 @@ public final class SmartMovingNetworking {
         });
     }
 
-    private static void broadcast(ServerPlayerEntity player, byte flags) {
+    private static void broadcast(ServerPlayerEntity player, int flags) {
         StateSyncS2CPayload packet = new StateSyncS2CPayload(player.getId(), flags);
         for (ServerPlayerEntity viewer : PlayerLookup.tracking(player)) {
             if (viewer != player && ServerPlayNetworking.canSend(viewer, StateSyncS2CPayload.ID)) {

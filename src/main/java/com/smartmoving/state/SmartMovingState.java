@@ -3,17 +3,20 @@ package com.smartmoving.state;
 /**
  * 플레이어 한 명의 스마트 무빙 상태.
  *
- * <p>위쪽 일곱 개(crawling ~ crawlClimbing)는 네트워크로 동기화되는 값이고,
+ * <p>위쪽 열 개(crawling ~ flying)는 네트워크로 동기화되는 값이고,
  * 나머지는 자기 캐릭터를 조종하는 클라이언트에서만 쓰는 값이다.
  */
 public class SmartMovingState {
-    public static final byte FLAG_CRAWLING = 1;
-    public static final byte FLAG_CLIMBING = 1 << 1;
-    public static final byte FLAG_SLIDING = 1 << 2;
-    public static final byte FLAG_HEAD_JUMPING = 1 << 3;
-    public static final byte FLAG_CEILING_CLIMBING = 1 << 4;
-    public static final byte FLAG_CLIMB_CRAWLING = 1 << 5;
-    public static final byte FLAG_CRAWL_CLIMBING = 1 << 6;
+    public static final int FLAG_CRAWLING = 1;
+    public static final int FLAG_CLIMBING = 1 << 1;
+    public static final int FLAG_SLIDING = 1 << 2;
+    public static final int FLAG_HEAD_JUMPING = 1 << 3;
+    public static final int FLAG_CEILING_CLIMBING = 1 << 4;
+    public static final int FLAG_CLIMB_CRAWLING = 1 << 5;
+    public static final int FLAG_CRAWL_CLIMBING = 1 << 6;
+    public static final int FLAG_SWIMMING = 1 << 7;
+    public static final int FLAG_DIVING = 1 << 8;
+    public static final int FLAG_FLYING = 1 << 9;
 
     // ---- 동기화되는 상태 ----
     public boolean crawling;
@@ -30,6 +33,12 @@ public class SmartMovingState {
     public boolean climbCrawling;
     /** 원작 isCrawlClimbing: 기어가던 자세 그대로 턱을 오르는 중 */
     public boolean crawlClimbing;
+    /** 원작 isSwimming: 물 위에서 머리를 내놓고 헤엄치는 중 */
+    public boolean swimming;
+    /** 원작 isDiving: 물속에서 보는 방향으로 잠수하는 중 (납작한 자세) */
+    public boolean diving;
+    /** 원작 isFlying: 원작 비행 (보는 방향으로 나는 비행, 납작한 자세) */
+    public boolean flying;
 
     // ---- 서버 전용 ----
     /** 헤드 점프가 끝난 서버 틱 (머리부터 착지할 때 낙하 대미지 계산용) */
@@ -125,15 +134,58 @@ public class SmartMovingState {
     public int rightJumpCount;
     public int backJumpCount;
 
+    /** 서버에도 이 모드가 있어 스마트 무빙이 켜져 있다 (ClientMovementController 가 매 틱 정한다) */
+    public boolean modActive;
+
+    // ---- 수영 / 잠수 / 비행 ----
+    /** 원작 isSwimSprinting / isDiveSprinting / isFlyingSprinting: 물속이나 비행 중 달리기 키 */
+    public boolean liquidFast;
+    /** 원작 isDipping: 얕은 물에서 걷는 중 */
+    public boolean dipping;
+    /** 원작 isLevitating: 물속에서 가만히 떠 있는 중 */
+    public boolean levitating;
+    /** 원작 isJumpingOutOfWater: 물가 벽을 짚고 물 밖으로 뛰어오르는 중 */
+    public boolean jumpingOutOfWater;
+    public int waterMovementTicks;
+
+    // ---- 애니메이션 통계 (원작 Smart Render 의 SmartStatistics). 모든 플레이어에 대해 클라이언트에서 계산한다 ----
+    public final AnimationStat animHorizontal = new AnimationStat();
+    public final AnimationStat animVertical = new AnimationStat();
+    public final AnimationStat animAll = new AnimationStat();
+    public double animLastX;
+    public double animLastY;
+    public double animLastZ;
+    public boolean animHasLast;
+    /** 움직이는 방향 (라디안, 원작 currentHorizontalAngle / currentVerticalAngle) */
+    public float animHorizontalAngle;
+    public float animVerticalAngle;
+    public float animHorizontalDistance;
+
+    /** 원작 SmartStatisticsData: 바닐라 팔다리 흔들기와 같은 방식(거리 x 4, 0.4 로 따라가기)으로 누적 */
+    public static final class AnimationStat {
+        public float speed;
+        public float total;
+
+        public void add(double distance) {
+            float d = (float) distance * 4F;
+            speed += (d - speed) * 0.4F;
+            total += speed;
+        }
+
+        public float currentSpeed() {
+            return Math.min(1F, speed);
+        }
+    }
+
     /** 지난 틱 위치 (원작 getTickDistance) */
     public double lastTickX;
     public double lastTickY;
     public double lastTickZ;
-    public byte lastSentFlags;
+    public int lastSentFlags;
     public int resendTimer;
 
-    public byte flags() {
-        byte f = 0;
+    public int flags() {
+        int f = 0;
         if (crawling) f |= FLAG_CRAWLING;
         if (climbing) f |= FLAG_CLIMBING;
         if (sliding) f |= FLAG_SLIDING;
@@ -141,10 +193,13 @@ public class SmartMovingState {
         if (ceilingClimbing) f |= FLAG_CEILING_CLIMBING;
         if (climbCrawling) f |= FLAG_CLIMB_CRAWLING;
         if (crawlClimbing) f |= FLAG_CRAWL_CLIMBING;
+        if (swimming) f |= FLAG_SWIMMING;
+        if (diving) f |= FLAG_DIVING;
+        if (flying) f |= FLAG_FLYING;
         return f;
     }
 
-    public void applyFlags(byte f) {
+    public void applyFlags(int f) {
         crawling = (f & FLAG_CRAWLING) != 0;
         climbing = (f & FLAG_CLIMBING) != 0;
         sliding = (f & FLAG_SLIDING) != 0;
@@ -152,10 +207,13 @@ public class SmartMovingState {
         ceilingClimbing = (f & FLAG_CEILING_CLIMBING) != 0;
         climbCrawling = (f & FLAG_CLIMB_CRAWLING) != 0;
         crawlClimbing = (f & FLAG_CRAWL_CLIMBING) != 0;
+        swimming = (f & FLAG_SWIMMING) != 0;
+        diving = (f & FLAG_DIVING) != 0;
+        flying = (f & FLAG_FLYING) != 0;
     }
 
-    /** 누워 있는 자세(기어가기, 슬라이딩, 헤드 점프, 틈으로 기어 오르기)가 필요한가. 원작의 heightOffset = -1 */
+    /** 누워 있는 자세(기어가기, 슬라이딩, 헤드 점프, 틈으로 기어 오르기, 잠수, 비행)가 필요한가. 원작의 heightOffset = -1 */
     public boolean wantsLowPose() {
-        return crawling || sliding || headJumping || climbCrawling || crawlClimbing;
+        return crawling || sliding || headJumping || climbCrawling || crawlClimbing || diving || flying;
     }
 }

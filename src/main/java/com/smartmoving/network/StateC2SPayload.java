@@ -6,11 +6,11 @@ import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.network.packet.CustomPayload;
 
-/** 클라이언트 → 서버: "지금 내 상태(기어가기/벽타기/슬라이딩)는 이렇다" */
-public record StateC2SPayload(byte flags) implements CustomPayload {
+/** 클라이언트 → 서버: "지금 내 상태(기어가기/벽타기/수영 ...)는 이렇다" */
+public record StateC2SPayload(int flags) implements CustomPayload {
     public static final Id<StateC2SPayload> ID = new Id<>(SmartMoving.id("state"));
     public static final PacketCodec<RegistryByteBuf, StateC2SPayload> CODEC =
-            PacketCodec.tuple(PacketCodecs.BYTE, StateC2SPayload::flags, StateC2SPayload::new);
+            PacketCodec.tuple(PacketCodecs.VAR_INT, StateC2SPayload::flags, StateC2SPayload::new);
 
     @Override
     public Id<? extends CustomPayload> getId() {

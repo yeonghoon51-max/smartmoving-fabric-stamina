@@ -46,7 +46,8 @@ public final class ClientMovementController {
         SmartMovingState state = SmartMovingPlayer.of(player);
 
         // 서버에 이 모드가 없으면 자세/낙하 판정이 어긋나므로 모든 기능을 끈다.
-        if (!ClientPlayNetworking.canSend(StateC2SPayload.ID)) {
+        state.modActive = ClientPlayNetworking.canSend(StateC2SPayload.ID);
+        if (!state.modActive) {
             resetAll(state);
             return;
         }
@@ -163,6 +164,14 @@ public final class ClientMovementController {
             state.maxExhaustionForAction = Math.min(state.maxExhaustionForAction, cfg.sprintExhaustionStop);
             state.maxExhaustionToStartAction = Math.min(state.maxExhaustionToStartAction, cfg.sprintExhaustionStart);
         }
+        // 원작 isSwimSprinting / isDiveSprinting / isFlyingSprinting
+        boolean wantLiquidSprint = cfg.enableSprint && in.sprint() && !in.sneak()
+                && (state.swimming || state.diving || state.flying);
+        boolean liquidSprintAllowed = !Exhaustion.enabled() || player.getAbilities().invulnerable
+                || (state.exhaustion <= cfg.sprintExhaustionStop
+                && (state.liquidFast || state.exhaustion <= cfg.sprintExhaustionStart));
+        state.liquidFast = wantLiquidSprint && liquidSprintAllowed;
+
         double minTickDistance = state.wantClimbUp ? 0.07 * cfg.freeClimbingUpSpeedFactor
                 : state.wantClimbDown ? 0.11 * cfg.freeClimbingDownSpeedFactor
                 : 0.07;
@@ -437,7 +446,7 @@ public final class ClientMovementController {
         if (state.ceilingClimbing && !standing && cfg.ceilingClimbExhaustion) {
             additional += cfg.ceilingClimbExhaustionGain;
         }
-        if (state.fast || state.climbFast) {
+        if (state.fast || state.climbFast || state.liquidFast) {
             if (additional == 0f) additional = 1f;
             additional *= cfg.sprintExhaustionGain;
         }
@@ -446,13 +455,16 @@ public final class ClientMovementController {
         if (state.exhaustion > 0f && player.getHungerManager().getFoodLevel() > cfg.exhaustionLossFoodMinimum) {
             boolean sneaking = in.sneak() && !state.crawling && !state.sliding;
             state.exhaustion -= Exhaustion.lossFactor(onGround, standing, still, sneaking,
-                    state.running, state.fast, state.climbing || state.ceilingClimbing);
+                    state.running, state.fast || state.climbFast || state.liquidFast,
+                    state.climbing || state.ceilingClimbing || state.swimming || state.diving);
         }
         state.exhaustion = Math.max(0f, state.exhaustion);
+        // 원작: 무적(크리에이티브)이면 지치지 않는다
+        if (player.getAbilities().invulnerable) state.exhaustion = 0f;
     }
 
     private static void syncToServer(SmartMovingState state) {
-        byte flags = state.flags();
+        int flags = state.flags();
         // 값이 바뀌었을 때 + 켜져 있는 동안 1초마다 한 번씩 (리스폰/차원 이동 대비)
         boolean periodic = flags != 0 && ++state.resendTimer >= 20;
         if (flags != state.lastSentFlags || periodic) {
@@ -478,6 +490,10 @@ public final class ClientMovementController {
         state.climbHolding = false;
         state.climbCrawling = false;
         state.crawlClimbing = false;
+        state.swimming = false;
+        state.diving = false;
+        state.flying = false;
+        state.liquidFast = false;
         state.climbIntoCount = 0;
         state.wantWallJumping = false;
         state.continueWallJumping = false;

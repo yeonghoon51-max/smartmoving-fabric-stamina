@@ -1,7 +1,19 @@
-# Smart Moving (Fabric 1.21.8)
+# Smart Moving (Fabric 1.20.1 / 1.21.8 / 26.3)
 
 Divisor의 **Smart Moving** (Forge/ModLoader, 마지막 버전 16.3 for MC 1.8.9)을 Fabric으로 옮긴 프로젝트입니다.
 움직임 공식과 기본값은 원작 16.3 소스 코드에서 가져왔습니다.
+
+## 지원 버전
+
+마인크래프트 jar 는 버전마다 따로입니다. 자기 게임 버전에 맞는 jar 하나를 Fabric API 와 함께 `mods` 폴더에 넣으세요.
+
+| 마인크래프트 | jar | Java | 비고 |
+|---|---|---|---|
+| 1.20.1 | `smartmoving-fabric-2.0.0+1.20.1.jar` | 17+ | 모드가 가장 많은 버전 |
+| 1.21.8 | `smartmoving-fabric-2.0.0+1.21.8.jar` | 21+ | |
+| 26.3 | `smartmoving-fabric-2.0.0+26.3.jar` | 25+ | 최신 버전 (모장 공식 이름 사용) |
+
+기능은 세 버전 모두 같습니다.
 
 ## 조작 (원작 Smart Moving 16.3 기준)
 
@@ -69,18 +81,22 @@ Divisor의 **Smart Moving** (Forge/ModLoader, 마지막 버전 16.3 for MC 1.8.9
 
 ## 빌드
 
-JDK 21 필요.
+버전마다 독립된 Gradle 프로젝트가 `versions/<마인크래프트 버전>/` 에 있습니다.
 
 ```
+cd versions/1.21.8      # 또는 versions/1.20.1, versions/26.3
 ./gradlew build
 ```
 
-결과물: `build/libs/smartmoving-fabric-<버전>.jar` → `.minecraft/mods`에 Fabric API와 함께 넣으면 됩니다.
-GitHub Actions에서도 푸시할 때마다 빌드되며, Actions 탭의 `smartmoving-fabric` 아티팩트에서 jar를 받을 수 있습니다.
+JDK 는 1.20.1·1.21.8 은 21, 26.3 은 25 가 필요합니다.
+결과물: `versions/<버전>/build/libs/smartmoving-fabric-<버전>.jar` → `.minecraft/mods`에 Fabric API와 함께 넣으면 됩니다.
+GitHub Actions에서도 푸시할 때마다 세 버전이 모두 빌드되며, Actions 탭의 `smartmoving-fabric-<마인크래프트 버전>` 아티팩트에서 jar를 받을 수 있습니다.
 
-게임에서 바로 테스트: `./gradlew runClient`
+게임에서 바로 테스트: 해당 버전 폴더에서 `./gradlew runClient`
 
 ## 코드 구조
+
+아래는 `versions/1.21.8` 기준입니다. 다른 버전도 파일 구성은 같고, 마인크래프트 쪽 이름만 그 버전에 맞게 다릅니다.
 
 ```
 src/main/java/com/smartmoving/        (서버+클라이언트 공용)

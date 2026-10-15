@@ -1,0 +1,109 @@
+name: API dump (26.3)
+
+# 개발용 임시 워크플로: 26.3 의 실제 클래스/메서드 이름(모장 이름)을 로그에 찍어서 포팅에 쓴다.
+on:
+  push:
+    paths:
+      - '.github/workflows/api-dump-26.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: versions/26.3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Find Minecraft jars
+        run: ./gradlew printMinecraftJars --no-daemon --no-configuration-cache -q | tee /tmp/mcjars.txt
+      - name: Dump classes
+        run: |
+          CP=$(grep '^MCJAR ' /tmp/mcjars.txt | cut -d' ' -f2- | paste -sd:)
+          CLASSES="
+          net.minecraft.world.entity.Entity
+          net.minecraft.world.entity.LivingEntity
+          net.minecraft.world.entity.player.Player
+          net.minecraft.world.entity.player.Abilities
+          net.minecraft.client.player.LocalPlayer
+          net.minecraft.client.player.AbstractClientPlayer
+          net.minecraft.client.player.ClientInput
+          net.minecraft.client.Minecraft
+          net.minecraft.client.Options
+          net.minecraft.client.KeyMapping
+          net.minecraft.client.KeyMapping\$Category
+          net.minecraft.world.level.Level
+          net.minecraft.world.level.CollisionGetter
+          net.minecraft.world.level.BlockGetter
+          net.minecraft.world.level.block.state.BlockBehaviour\$BlockStateBase
+          net.minecraft.world.level.block.state.StateHolder
+          net.minecraft.world.level.block.Block
+          net.minecraft.world.level.block.state.BlockBehaviour
+          net.minecraft.world.phys.AABB
+          net.minecraft.world.phys.Vec3
+          net.minecraft.util.Mth
+          net.minecraft.core.BlockPos
+          net.minecraft.core.Direction
+          net.minecraft.world.level.block.StairBlock
+          net.minecraft.world.level.block.SlabBlock
+          net.minecraft.world.level.block.TrapDoorBlock
+          net.minecraft.world.level.block.DoorBlock
+          net.minecraft.world.level.block.FenceBlock
+          net.minecraft.world.level.block.FenceGateBlock
+          net.minecraft.world.level.block.WallBlock
+          net.minecraft.world.level.block.CrossCollisionBlock
+          net.minecraft.world.level.block.IronBarsBlock
+          net.minecraft.world.level.block.LadderBlock
+          net.minecraft.world.level.block.VineBlock
+          net.minecraft.world.level.block.CarpetBlock
+          net.minecraft.world.level.block.SnowLayerBlock
+          net.minecraft.world.level.block.ScaffoldingBlock
+          net.minecraft.world.level.block.SignBlock
+          net.minecraft.world.level.block.BasePressurePlateBlock
+          net.minecraft.world.level.block.BedBlock
+          net.minecraft.world.level.block.state.properties.StairsShape
+          net.minecraft.world.level.block.state.properties.Half
+          net.minecraft.world.level.block.state.properties.DoorHingeSide
+          net.minecraft.world.level.block.state.properties.DoubleBlockHalf
+          net.minecraft.world.level.block.state.properties.SlabType
+          net.minecraft.world.level.block.state.properties.WallSide
+          net.minecraft.world.level.material.FluidState
+          net.minecraft.tags.FluidTags
+          net.minecraft.tags.BlockTags
+          net.minecraft.world.effect.MobEffects
+          net.minecraft.world.effect.MobEffectInstance
+          net.minecraft.world.entity.ai.attributes.Attributes
+          net.minecraft.world.entity.MoverType
+          net.minecraft.world.entity.Pose
+          net.minecraft.client.model.HumanoidModel
+          net.minecraft.client.model.geom.ModelPart
+          net.minecraft.client.renderer.entity.state.HumanoidRenderState
+          net.minecraft.client.renderer.entity.state.AvatarRenderState
+          net.minecraft.client.renderer.entity.state.LivingEntityRenderState
+          net.minecraft.client.renderer.entity.state.EntityRenderState
+          net.minecraft.client.gui.GuiGraphicsExtractor
+          net.minecraft.client.renderer.RenderPipelines
+          net.minecraft.client.multiplayer.MultiPlayerGameMode
+          net.minecraft.client.multiplayer.ClientLevel
+          net.minecraft.resources.Identifier
+          net.minecraft.network.codec.ByteBufCodecs
+          net.minecraft.network.codec.StreamCodec
+          net.minecraft.network.protocol.common.custom.CustomPacketPayload
+          net.minecraft.network.protocol.common.custom.CustomPacketPayload\$Type
+          net.minecraft.server.level.ServerPlayer
+          net.minecraft.world.damagesource.DamageSources
+          net.minecraft.world.food.FoodData
+          net.minecraft.client.DeltaTracker
+          "
+          for c in $CLASSES; do
+            echo "##### $c"
+            javap -cp "$CP" -p "$c" 2>&1 | grep -v 'lambda\$' | grep -v '^Compiled from' || true
+          done

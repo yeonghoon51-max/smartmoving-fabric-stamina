@@ -2,35 +2,35 @@
 // Ported from Smart Moving 16.3 by Divisor (net.smart.moving.Orientation), GPL-3.0-or-later.
 package com.smartmoving.logic.climb;
 
-import net.minecraft.block.AbstractPressurePlateBlock;
-import net.minecraft.block.AbstractSignBlock;
-import net.minecraft.block.BedBlock;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.CarpetBlock;
-import net.minecraft.block.DoorBlock;
-import net.minecraft.block.FenceBlock;
-import net.minecraft.block.FenceGateBlock;
-import net.minecraft.block.HorizontalConnectingBlock;
-import net.minecraft.block.LadderBlock;
-import net.minecraft.block.PaneBlock;
-import net.minecraft.block.ScaffoldingBlock;
-import net.minecraft.block.SlabBlock;
-import net.minecraft.block.SnowBlock;
-import net.minecraft.block.StairsBlock;
-import net.minecraft.block.TrapdoorBlock;
-import net.minecraft.block.VineBlock;
-import net.minecraft.block.WallBlock;
-import net.minecraft.block.enums.BlockHalf;
-import net.minecraft.block.enums.DoorHinge;
-import net.minecraft.block.enums.DoubleBlockHalf;
-import net.minecraft.block.enums.SlabType;
-import net.minecraft.block.enums.StairShape;
-import net.minecraft.block.enums.WallShape;
-import net.minecraft.registry.tag.BlockTags;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.BasePressurePlateBlock;
+import net.minecraft.world.level.block.SignBlock;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.CarpetBlock;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.FenceBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.CrossCollisionBlock;
+import net.minecraft.world.level.block.LadderBlock;
+import net.minecraft.world.level.block.IronBarsBlock;
+import net.minecraft.world.level.block.ScaffoldingBlock;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.SnowLayerBlock;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.VineBlock;
+import net.minecraft.world.level.block.WallBlock;
+import net.minecraft.world.level.block.state.properties.Half;
+import net.minecraft.world.level.block.state.properties.DoorHingeSide;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.block.state.properties.SlabType;
+import net.minecraft.world.level.block.state.properties.StairsShape;
+import net.minecraft.world.level.block.state.properties.WallSide;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -269,7 +269,7 @@ public final class Orientation {
      *
      * @param jhd 발 높이 * 2 + 1 (반 블록 단위)
      */
-    public void seekClimbGap(float rotation, World w, int bi, double id, double jhd, int bk, double kd,
+    public void seekClimbGap(float rotation, Level w, int bi, double id, double jhd, int bk, double kd,
                              boolean isClimbCrawling, boolean isCrawlClimbing, boolean isCrawling,
                              HandsClimbing[] inoutHandsClimbing, FeetClimbing[] inoutFeetClimbing,
                              ClimbGap outHandsClimbGap, ClimbGap outFeetClimbGap) {
@@ -287,12 +287,12 @@ public final class Orientation {
      * 원작 getClimbingOrientations() + isTunnelAhead(): 바라보는 방향(직교·대각) 중 하나라도
      * 앞 칸의 j+1 이 비어 있고 j+2 가 막혀 있으면 (낮은 굴) true.
      */
-    public static boolean isTunnelAhead(World w, float rotation, int i, int j, int k) {
+    public static boolean isTunnelAhead(Level w, float rotation, int i, int j, int k) {
         for (List<Orientation> list : List.of(ORTHOGONALS, DIAGONALS)) {
             for (Orientation orientation : list) {
                 if (!orientation.isRotationForClimbing(rotation)) continue;
                 BlockPos ahead = new BlockPos(i + orientation.i, j + 1, k + orientation.k);
-                BlockPos above = ahead.up();
+                BlockPos above = ahead.above();
                 if (w.getBlockState(ahead).getCollisionShape(w, ahead).isEmpty()
                         && !w.getBlockState(above).getCollisionShape(w, above).isEmpty()) {
                     return true;
@@ -314,14 +314,14 @@ public final class Orientation {
         return isLadder(state) || isVine(state);
     }
 
-    public static boolean isClimbable(World w, int x, int y, int z) {
-        return w.getBlockState(new BlockPos(x, y, z)).isIn(BlockTags.CLIMBABLE);
+    public static boolean isClimbable(Level w, int x, int y, int z) {
+        return w.getBlockState(new BlockPos(x, y, z)).is(BlockTags.CLIMBABLE);
     }
 
-    public static Orientation getKnownLadderOrientation(World w, int x, int y, int z) {
+    public static Orientation getKnownLadderOrientation(Level w, int x, int y, int z) {
         BlockState state = w.getBlockState(new BlockPos(x, y, z));
         if (!isLadder(state)) return null;
-        return FACING_TO_ORIENTATION.get(state.get(LadderBlock.FACING));
+        return FACING_TO_ORIENTATION.get(state.getValue(LadderBlock.FACING));
     }
 
     // ------------------------------------------------------------------
@@ -753,14 +753,14 @@ public final class Orientation {
         BlockState state = getBaseBlockState(jOffset);
         if (isLadder(state)) return true;
         if (isVine(state)) return false;
-        return state.isIn(BlockTags.CLIMBABLE) && !(state.getBlock() instanceof ScaffoldingBlock);
+        return state.is(BlockTags.CLIMBABLE) && !(state.getBlock() instanceof ScaffoldingBlock);
     }
 
     private static boolean isBehindLadder(int jOffset) {
         BlockState state = getRemoteBlockState(jOffset);
         if (isLadder(state)) return true;
         if (isVine(state)) return false;
-        return state.isIn(BlockTags.CLIMBABLE) && !(state.getBlock() instanceof ScaffoldingBlock);
+        return state.is(BlockTags.CLIMBABLE) && !(state.getBlock() instanceof ScaffoldingBlock);
     }
 
     private static boolean isOnVine(int jOffset) {
@@ -794,10 +794,10 @@ public final class Orientation {
     private boolean hasVineOrientation(int x, int y, int z) {
         BlockState state = world.getBlockState(new BlockPos(x, y, z));
         if (!isVine(state)) return false;
-        if (this == NZ) return state.get(VineBlock.EAST);
-        if (this == PZ) return state.get(VineBlock.WEST);
-        if (this == ZP) return state.get(VineBlock.NORTH);
-        if (this == ZN) return state.get(VineBlock.SOUTH);
+        if (this == NZ) return state.getValue(VineBlock.EAST);
+        if (this == PZ) return state.getValue(VineBlock.WEST);
+        if (this == ZP) return state.getValue(VineBlock.NORTH);
+        if (this == ZN) return state.getValue(VineBlock.SOUTH);
         return false;
     }
 
@@ -805,9 +805,9 @@ public final class Orientation {
         BlockState state = getBlockState(x, jOffset, z);
         if (!isLadder(state)) {
             // 사다리 태그만 있는 블록(예: 다른 모드)은 방향을 모르므로 앞이라고 본다
-            return state.isIn(BlockTags.CLIMBABLE) && !isVine(state) && !(state.getBlock() instanceof ScaffoldingBlock);
+            return state.is(BlockTags.CLIMBABLE) && !isVine(state) && !(state.getBlock() instanceof ScaffoldingBlock);
         }
-        return state.get(LadderBlock.FACING) == this.facing;
+        return state.getValue(LadderBlock.FACING) == this.facing;
     }
 
     private static boolean isOnOpenTrapDoor(int jOffset) {
@@ -816,7 +816,7 @@ public final class Orientation {
     }
 
     private boolean isTrapDoorFront(BlockState state) {
-        return facings.contains(state.get(TrapdoorBlock.FACING));
+        return facings.contains(state.getValue(TrapDoorBlock.FACING));
     }
 
     // ------------------------------------------------------------------
@@ -840,11 +840,11 @@ public final class Orientation {
     }
 
     private boolean isStairCompactFront(BlockState state) {
-        Direction f = state.get(StairsBlock.FACING);
-        StairShape s = state.get(StairsBlock.SHAPE);
+        Direction f = state.getValue(StairBlock.FACING);
+        StairsShape s = state.getValue(StairBlock.SHAPE);
         boolean north = f == Direction.NORTH, south = f == Direction.SOUTH, east = f == Direction.EAST, west = f == Direction.WEST;
-        boolean ol = s == StairShape.OUTER_LEFT, or = s == StairShape.OUTER_RIGHT, il = s == StairShape.INNER_LEFT,
-                ir = s == StairShape.INNER_RIGHT, st = s == StairShape.STRAIGHT;
+        boolean ol = s == StairsShape.OUTER_LEFT, or = s == StairsShape.OUTER_RIGHT, il = s == StairsShape.INNER_LEFT,
+                ir = s == StairsShape.INNER_RIGHT, st = s == StairsShape.STRAIGHT;
 
         if (this == NZ) return (north && ol) || (south && or) || (west && (st || or || ol));
         if (this == PZ) return (north && or) || (south && ol) || (east && (st || or || ol));
@@ -858,11 +858,11 @@ public final class Orientation {
     }
 
     private boolean isStairCompactBack(BlockState state) {
-        Direction f = state.get(StairsBlock.FACING);
-        StairShape s = state.get(StairsBlock.SHAPE);
+        Direction f = state.getValue(StairBlock.FACING);
+        StairsShape s = state.getValue(StairBlock.SHAPE);
         boolean north = f == Direction.NORTH, south = f == Direction.SOUTH, east = f == Direction.EAST, west = f == Direction.WEST;
-        boolean ol = s == StairShape.OUTER_LEFT, or = s == StairShape.OUTER_RIGHT, il = s == StairShape.INNER_LEFT,
-                ir = s == StairShape.INNER_RIGHT, st = s == StairShape.STRAIGHT;
+        boolean ol = s == StairsShape.OUTER_LEFT, or = s == StairsShape.OUTER_RIGHT, il = s == StairsShape.INNER_LEFT,
+                ir = s == StairsShape.INNER_RIGHT, st = s == StairsShape.STRAIGHT;
 
         if (this == NZ) return (north && ir) || (south && il) || (east && (st || il || ir));
         if (this == PZ) return (north && il) || (south && ir) || (west && (st || il || ir));
@@ -876,7 +876,7 @@ public final class Orientation {
     }
 
     private static boolean isTopStairCompact(BlockState state) {
-        return state.get(StairsBlock.HALF) == BlockHalf.TOP;
+        return state.getValue(StairBlock.HALF) == Half.TOP;
     }
 
     // ------------------------------------------------------------------
@@ -884,7 +884,7 @@ public final class Orientation {
     // ------------------------------------------------------------------
 
     private boolean isFenceGateFront(BlockState state) {
-        Orientation orientation = FACING_TO_ORIENTATION.get(state.get(FenceGateBlock.FACING));
+        Orientation orientation = FACING_TO_ORIENTATION.get(state.getValue(FenceGateBlock.FACING));
         return orientation != null && (this == orientation.rotate(90) || this == orientation.rotate(-90));
     }
 
@@ -1006,28 +1006,28 @@ public final class Orientation {
     /** 원작 getWallFlag: 이 블록이 direction 쪽으로 이어져 있는가 (1.21 은 블록 상태에 저장돼 있다) */
     private static boolean getWallFlag(Orientation direction, BlockState state) {
         Block block = state.getBlock();
-        if (block instanceof HorizontalConnectingBlock) { // 울타리, 판유리, 철창
-            if (direction == NZ) return state.get(HorizontalConnectingBlock.WEST);
-            if (direction == PZ) return state.get(HorizontalConnectingBlock.EAST);
-            if (direction == ZN) return state.get(HorizontalConnectingBlock.NORTH);
-            if (direction == ZP) return state.get(HorizontalConnectingBlock.SOUTH);
+        if (block instanceof CrossCollisionBlock) { // 울타리, 판유리, 철창
+            if (direction == NZ) return state.getValue(CrossCollisionBlock.WEST);
+            if (direction == PZ) return state.getValue(CrossCollisionBlock.EAST);
+            if (direction == ZN) return state.getValue(CrossCollisionBlock.NORTH);
+            if (direction == ZP) return state.getValue(CrossCollisionBlock.SOUTH);
             return false;
         }
         if (block instanceof WallBlock) {
-            if (direction == NZ) return state.get(WallBlock.WEST_WALL_SHAPE) != WallShape.NONE;
-            if (direction == PZ) return state.get(WallBlock.EAST_WALL_SHAPE) != WallShape.NONE;
-            if (direction == ZN) return state.get(WallBlock.NORTH_WALL_SHAPE) != WallShape.NONE;
-            if (direction == ZP) return state.get(WallBlock.SOUTH_WALL_SHAPE) != WallShape.NONE;
+            if (direction == NZ) return state.getValue(WallBlock.WEST) != WallSide.NONE;
+            if (direction == PZ) return state.getValue(WallBlock.EAST) != WallSide.NONE;
+            if (direction == ZN) return state.getValue(WallBlock.NORTH) != WallSide.NONE;
+            if (direction == ZP) return state.getValue(WallBlock.SOUTH) != WallSide.NONE;
             return false;
         }
         if (block instanceof FenceGateBlock) {
-            return !state.get(FenceGateBlock.OPEN) && direction.isFenceGateFront(state);
+            return !state.getValue(FenceGateBlock.OPEN) && direction.isFenceGateFront(state);
         }
         return false;
     }
 
     private static boolean getAllWallsOnNoWall(BlockState state) {
-        return state.getBlock() instanceof PaneBlock;
+        return state.getBlock() instanceof IronBarsBlock;
     }
 
     private static boolean isTopHalf(double d) {
@@ -1039,23 +1039,23 @@ public final class Orientation {
     // ------------------------------------------------------------------
 
     private static boolean isBottomHalfBlock(BlockState state) {
-        return (isHalfBlock(state) && state.get(SlabBlock.TYPE) == SlabType.BOTTOM) || state.getBlock() instanceof BedBlock;
+        return (isHalfBlock(state) && state.getValue(SlabBlock.TYPE) == SlabType.BOTTOM) || state.getBlock() instanceof BedBlock;
     }
 
     private static boolean isTopHalfBlock(BlockState state) {
-        return isHalfBlock(state) && state.get(SlabBlock.TYPE) == SlabType.TOP;
+        return isHalfBlock(state) && state.getValue(SlabBlock.TYPE) == SlabType.TOP;
     }
 
     private static boolean isHalfBlock(BlockState state) {
-        return state.getBlock() instanceof SlabBlock && state.get(SlabBlock.TYPE) != SlabType.DOUBLE;
+        return state.getBlock() instanceof SlabBlock && state.getValue(SlabBlock.TYPE) != SlabType.DOUBLE;
     }
 
     private static boolean isStairCompact(BlockState state) {
-        return state.getBlock() instanceof StairsBlock;
+        return state.getBlock() instanceof StairBlock;
     }
 
     private static boolean isIronBars(BlockState state) {
-        return state != null && state.getBlock() instanceof PaneBlock;
+        return state != null && state.getBlock() instanceof IronBarsBlock;
     }
 
     private static boolean isStoneWall(BlockState state) {
@@ -1075,20 +1075,20 @@ public final class Orientation {
     }
 
     private static boolean isClosedFenceGate(BlockState state) {
-        return isFenceGate(state) && !state.get(FenceGateBlock.OPEN);
+        return isFenceGate(state) && !state.getValue(FenceGateBlock.OPEN);
     }
 
     /** 원작의 버그까지 그대로: 이름은 "열림"이지만 닫힌 울타리 문을 검사한다 */
     private static boolean isOpenFenceGate(BlockState state) {
-        return isFenceGate(state) && !state.get(FenceGateBlock.OPEN);
+        return isFenceGate(state) && !state.getValue(FenceGateBlock.OPEN);
     }
 
     public static boolean isTrapDoor(BlockState state) {
-        return state.getBlock() instanceof TrapdoorBlock;
+        return state.getBlock() instanceof TrapDoorBlock;
     }
 
     public static boolean isClosedTrapDoor(BlockState state) {
-        return !state.get(TrapdoorBlock.OPEN);
+        return !state.getValue(TrapDoorBlock.OPEN);
     }
 
     private static boolean isOpenTrapDoor(int x, int jOffset, int z) {
@@ -1106,7 +1106,7 @@ public final class Orientation {
     }
 
     private static boolean isDoorTop(BlockState state) {
-        return state.get(DoorBlock.HALF) == DoubleBlockHalf.UPPER;
+        return state.getValue(DoorBlock.HALF) == DoubleBlockHalf.UPPER;
     }
 
     private boolean isDoorFrontBlocked(int x, int jOffset, int z) {
@@ -1124,9 +1124,9 @@ public final class Orientation {
     }
 
     private static Direction getDoorFacing(BlockState state) {
-        Direction f = state.get(DoorBlock.FACING);
-        if (!state.get(DoorBlock.OPEN)) return f;
-        if (state.get(DoorBlock.HINGE) == DoorHinge.LEFT) {
+        Direction f = state.getValue(DoorBlock.FACING);
+        if (!state.getValue(DoorBlock.OPEN)) return f;
+        if (state.getValue(DoorBlock.HINGE) == DoorHingeSide.LEFT) {
             return switch (f) {
                 case EAST -> Direction.NORTH;
                 case NORTH -> Direction.WEST;
@@ -1150,7 +1150,7 @@ public final class Orientation {
     }
 
     private static boolean isWallBlock(BlockState state) {
-        return state.getBlock() instanceof PaneBlock || isFence(state);
+        return state.getBlock() instanceof IronBarsBlock || isFence(state);
     }
 
     // ------------------------------------------------------------------
@@ -1160,12 +1160,12 @@ public final class Orientation {
     /** 원작 Material.isSolid() && blocksMovement() 에 해당하는 판정 */
     private static boolean isSolid(BlockState state, int x, int y, int z) {
         Block block = state.getBlock();
-        if (block instanceof LadderBlock || block instanceof CarpetBlock || block instanceof SnowBlock
-                || block instanceof ScaffoldingBlock || block instanceof AbstractSignBlock
-                || block instanceof AbstractPressurePlateBlock) {
+        if (block instanceof LadderBlock || block instanceof CarpetBlock || block instanceof SnowLayerBlock
+                || block instanceof ScaffoldingBlock || block instanceof SignBlock
+                || block instanceof BasePressurePlateBlock) {
             return false;
         }
-        if (!state.blocksMovement()) return false;
+        if (!state.blocksMotion()) return false;
         return !state.getCollisionShape(world, new BlockPos(x, y, z)).isEmpty();
     }
 
@@ -1181,7 +1181,7 @@ public final class Orientation {
     private static boolean isLowerHalfEmpty(int x, int jOffset, int z) {
         BlockState state = getBlockState(x, jOffset, z);
         boolean empty = isFullEmpty(state, x, jOffset, z);
-        if (!empty && isHalfBlock(state) && state.get(SlabBlock.TYPE) == SlabType.TOP) empty = true;
+        if (!empty && isHalfBlock(state) && state.getValue(SlabBlock.TYPE) == SlabType.TOP) empty = true;
         return empty;
     }
 
@@ -1190,7 +1190,7 @@ public final class Orientation {
         boolean empty = isFullEmpty(state, x, jOffset, z);
 
         if (!empty && isStairCompact(state) && isTopStairCompactFront(state)) empty = true;
-        if (!empty && isHalfBlock(state) && state.get(SlabBlock.TYPE) == SlabType.TOP) empty = true;
+        if (!empty && isHalfBlock(state) && state.getValue(SlabBlock.TYPE) == SlabType.TOP) empty = true;
         if (!empty && isWallBlock(state) && !headedToFrontWall(x, jOffset, z, state)) empty = true;
         if (!empty && isDoor(state) && !rotate(180).isDoorFrontBlocked(x, jOffset, z)) empty = true;
         if (!empty && isTrapDoor(state) && (isClosedTrapDoor(state) || !rotate(180).isTrapDoorFront(state))) empty = true;
@@ -1336,7 +1336,7 @@ public final class Orientation {
         return getBlockState(remoteI, jOffset, remoteK);
     }
 
-    private void initialize(World w, int bi, double id, double jhd, int bk, double kd) {
+    private void initialize(Level w, int bi, double id, double jhd, int bk, double kd) {
         world = w;
         baseI = bi;
         baseId = id;
@@ -1368,7 +1368,7 @@ public final class Orientation {
     private static final ClimbGap CLIMB_GAP_TEMP = new ClimbGap();
     private static final ClimbGap CLIMB_GAP_OUTER_TEMP = new ClimbGap();
 
-    private static World world;
+    private static Level world;
     private static double baseJhd;
     private static double jhOffset;
     private static int allJ;

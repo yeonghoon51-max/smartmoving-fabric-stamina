@@ -1,6 +1,6 @@
 package com.smartmoving.logic.climb;
 
-import net.minecraft.block.Block;
+import net.minecraft.world.level.block.Block;
 
 /** 원작 net.smart.moving.ClimbGap: 손/발이 잡은 곳의 정보 */
 public final class ClimbGap {

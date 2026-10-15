@@ -5,10 +5,10 @@ package com.smartmoving.logic;
 import com.smartmoving.SmartMoving;
 import com.smartmoving.config.SmartMovingConfig;
 import com.smartmoving.state.SmartMovingState;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
 
 /**
  * 원작 벽 점프: 공중에서 점프 키를 두 번 누르고 누른 채로 벽에 부딪히면, 들어온 각도의 반사 방향으로 튕겨 나간다.
@@ -19,11 +19,11 @@ public final class WallJumping {
     }
 
     /** 원작 beforeMoveEntity(): 이번 이동이 어느 쪽 벽에 막히는지 */
-    public static void beforeMove(PlayerEntity player, SmartMovingState state, Vec3d movement) {
-        World world = player.getWorld();
-        Box box = player.getBoundingBox().contract(1.0E-7);
-        boolean blockedX = movement.x != 0 && !world.isSpaceEmpty(player, box.offset(movement.x, 0, 0));
-        boolean blockedZ = movement.z != 0 && !world.isSpaceEmpty(player, box.offset(0, 0, movement.z));
+    public static void beforeMove(Player player, SmartMovingState state, Vec3 movement) {
+        Level world = player.level();
+        AABB box = player.getBoundingBox().deflate(1.0E-7);
+        boolean blockedX = movement.x != 0 && !world.noCollision(player, box.move(movement.x, 0, 0));
+        boolean blockedZ = movement.z != 0 && !world.noCollision(player, box.move(0, 0, movement.z));
         // 원작은 (Z+, Z-, X+, X-) 순서로 넘긴다
         state.horizontalCollisionAngle = horizontalCollisionAngle(
                 blockedZ && movement.z > 0, blockedZ && movement.z < 0,
@@ -31,7 +31,7 @@ public final class WallJumping {
     }
 
     /** 원작 handleWallJumping(): 이동이 끝난 뒤 */
-    public static void afterTravel(PlayerEntity player, SmartMovingState state) {
+    public static void afterTravel(Player player, SmartMovingState state) {
         if (!state.wantWallJumping || Float.isNaN(state.horizontalCollisionAngle)) return;
         SmartMovingConfig cfg = SmartMoving.CONFIG;
 
@@ -67,7 +67,7 @@ public final class WallJumping {
         if (Jumps.tryJump(player, state, type, MoveSpeed.STANDING, jumpAngle, state.jumpMotionX, state.jumpMotionZ)) {
             state.continueWallJumping = !state.headJumping;
             player.horizontalCollision = false;
-            player.setYaw(jumpAngle);
+            player.setYRot(jumpAngle);
         }
     }
 

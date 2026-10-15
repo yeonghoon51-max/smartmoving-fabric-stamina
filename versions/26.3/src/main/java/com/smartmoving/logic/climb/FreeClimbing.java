@@ -9,14 +9,14 @@ import com.smartmoving.logic.JumpType;
 import com.smartmoving.logic.Jumps;
 import com.smartmoving.logic.MoveSpeed;
 import com.smartmoving.state.SmartMovingState;
-import net.minecraft.block.BedBlock;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
 
 /**
  * 원작 handleClimbing() 의 자유 벽 타기 부분.
@@ -55,7 +55,7 @@ public final class FreeClimbing {
      *
      * @return 바뀐 이동 입력 (x = 좌우, z = 앞뒤)
      */
-    public static Vec3d beforeTravel(PlayerEntity player, SmartMovingState state, Vec3d input) {
+    public static Vec3 beforeTravel(Player player, SmartMovingState state, Vec3 input) {
         if (player.horizontalCollision) {
             state.lastHorizontalCollisionX = player.getX();
             state.lastHorizontalCollisionZ = player.getZ();
@@ -63,23 +63,23 @@ public final class FreeClimbing {
 
         // 바닐라 travelMidAir() 가 쓰는 수평 감속 (이동 전에 정해진다)
         float slipperiness = 1F;
-        if (player.isOnGround()) {
-            BlockPos below = BlockPos.ofFloored(player.getX(), player.getBoundingBox().minY - 0.5000001, player.getZ());
-            slipperiness = player.getWorld().getBlockState(below).getBlock().getSlipperiness();
+        if (player.onGround()) {
+            BlockPos below = BlockPos.containing(player.getX(), player.getBoundingBox().minY - 0.5000001, player.getZ());
+            slipperiness = player.level().getBlockState(below).getBlock().getFriction();
         }
         state.travelHorizontalDamping = slipperiness * 0.91F;
 
-        Vec3d result = input;
+        Vec3 result = input;
         // 천장에 매달려 있으면 느리게 움직인다 (원작 move.climb.ceiling.speed.factor)
         if (state.ceilingClimbing) {
-            result = new Vec3d(input.x * SmartMoving.CONFIG.ceilingClimbingSpeedFactor, input.y,
+            result = new Vec3(input.x * SmartMoving.CONFIG.ceilingClimbingSpeedFactor, input.y,
                     input.z * SmartMoving.CONFIG.ceilingClimbingSpeedFactor);
         }
         // 내려가는 중 아무 키도 안 누르면 벽 쪽으로 당겨서 붙어 있게 한다.
         if (state.climbing && input.x == 0 && input.z == 0 && state.wantClimbDown && state.neighborClimbing
                 && !(Math.abs(player.getX() - state.lastHorizontalCollisionX) < 0.05
                 && Math.abs(player.getZ() - state.lastHorizontalCollisionZ) < 0.05)) {
-            result = new Vec3d(input.x, input.y, CLIMB_PULL_MOTION);
+            result = new Vec3(input.x, input.y, CLIMB_PULL_MOTION);
         }
 
         state.wasClimbingThisTravel = state.climbing;
@@ -95,44 +95,44 @@ public final class FreeClimbing {
     }
 
     /** travel() 끝. 바닐라 이동이 끝난 직후. 원작 handleLand(): 벽 타기 → 천장 매달리기 → 중력 */
-    public static void afterTravel(PlayerEntity player, SmartMovingState state) {
+    public static void afterTravel(Player player, SmartMovingState state) {
         SmartMovingConfig cfg = SmartMoving.CONFIG;
         // 사다리/덩굴은 바닐라가 처리한다.
-        if (player.isClimbing() || player.hasNoGravity() || player.hasStatusEffect(StatusEffects.LEVITATION)) return;
+        if (player.onClimbable() || player.isNoGravity() || player.hasEffect(MobEffects.LEVITATION)) return;
 
         boolean freeClimb = canFreeClimb(player, state, cfg);
         boolean ceilingClimb = CeilingClimbing.couldClimb(state, cfg);
         if (!freeClimb && !ceilingClimb) return;
 
         // 바닐라가 이미 적용한 중력과 감속을 되돌린다.
-        Vec3d v = player.getVelocity();
-        double gravity = player.getFinalGravity();
+        Vec3 v = player.getDeltaMovement();
+        double gravity = player.getGravity();
         double motionY = v.y / 0.98F + gravity;
-        if (motionY <= 0 && player.hasStatusEffect(StatusEffects.SLOW_FALLING)) {
+        if (motionY <= 0 && player.hasEffect(MobEffects.SLOW_FALLING)) {
             gravity = Math.min(gravity, 0.01);
             motionY = v.y / 0.98F + gravity;
         }
         double damping = state.travelHorizontalDamping;
-        player.setVelocity(v.x / damping, motionY, v.z / damping);
+        player.setDeltaMovement(v.x / damping, motionY, v.z / damping);
 
         if (freeClimb) handleClimbing(player, state, cfg);
         if (ceilingClimb) CeilingClimbing.handle(player, state, cfg);
 
         // 원작 setLandMotions(): 중력과 감속
-        Vec3d after = player.getVelocity();
-        player.setVelocity(after.x * damping, (after.y - gravity) * 0.98F, after.z * damping);
+        Vec3 after = player.getDeltaMovement();
+        player.setDeltaMovement(after.x * damping, (after.y - gravity) * 0.98F, after.z * damping);
     }
 
     /**
      * 직접 만든 이동 물리(슬라이딩)에서 이동 직후, 중력 전에 부른다. 슬라이딩하다 벽을 잡는 경우.
      */
-    public static void afterMove(PlayerEntity player, SmartMovingState state) {
-        if (player.isClimbing() || player.hasNoGravity()) return;
+    public static void afterMove(Player player, SmartMovingState state) {
+        if (player.onClimbable() || player.isNoGravity()) return;
         SmartMovingConfig cfg = SmartMoving.CONFIG;
         if (canFreeClimb(player, state, cfg)) handleClimbing(player, state, cfg);
     }
 
-    private static boolean canFreeClimb(PlayerEntity player, SmartMovingState state, SmartMovingConfig cfg) {
+    private static boolean canFreeClimb(Player player, SmartMovingState state, SmartMovingConfig cfg) {
         if (!cfg.enableClimbing) return false;
         if (player.fallDistance > cfg.freeClimbFallMaximumDistance) return false;
         if (state.headJumping) return false;
@@ -147,8 +147,8 @@ public final class FreeClimbing {
         return true;
     }
 
-    private static void handleClimbing(PlayerEntity player, SmartMovingState state, SmartMovingConfig cfg) {
-        World world = player.getWorld();
+    private static void handleClimbing(Player player, SmartMovingState state, SmartMovingConfig cfg) {
+        Level world = player.level();
         double id = player.getX();
         double jd = player.getBoundingBox().minY;
         double kd = player.getZ();
@@ -158,11 +158,11 @@ public final class FreeClimbing {
         boolean isSmallClimbing = state.crawling || state.sliding;
         if (state.climbCrawling || state.crawlClimbing || isSmallClimbing) jd -= 1D;
 
-        int i = MathHelper.floor(id);
-        int j = MathHelper.floor(jd);
-        int k = MathHelper.floor(kd);
+        int i = Mth.floor(id);
+        int j = Mth.floor(jd);
+        int k = Mth.floor(kd);
 
-        float rotation = Orientation.normalizeYaw(player.getYaw());
+        float rotation = Orientation.normalizeYaw(player.getYRot());
         double jh = jd * 2D + 1;
 
         INOUT_HANDS[0] = HandsClimbing.NONE;
@@ -207,7 +207,7 @@ public final class FreeClimbing {
         }
 
         if (!state.grabKey && handsClimbing == HandsClimbing.UP && feetClimbing == FeetClimbing.NONE) {
-            if (!player.horizontalCollision && world.isAir(new BlockPos(i, j, k)) && world.isAir(new BlockPos(i, j + 1, k))) {
+            if (!player.horizontalCollision && world.getBlockState(new BlockPos(i, j, k)).isAir() && world.getBlockState(new BlockPos(i, j + 1, k)).isAir()) {
                 handsClimbing = HandsClimbing.NONE;
             }
         }
@@ -225,7 +225,7 @@ public final class FreeClimbing {
             handsClimbing = handsClimbing.toUp();
 
             if (feetClimbing == FeetClimbing.FAST_UP
-                    && !(handsClimbing == HandsClimbing.NONE && player.isOnGround() && !(FEET_GAP.block instanceof BedBlock))) {
+                    && !(handsClimbing == HandsClimbing.NONE && player.onGround() && !(FEET_GAP.block instanceof BedBlock))) {
                 // 빠르게 오르기
                 setClimbSpeed(player, state, cfg, FAST_UP_MOTION);
             } else if ((hasClimbGap || hasClimbCrawlGap) && handsClimbing == HandsClimbing.FAST_UP
@@ -291,12 +291,12 @@ public final class FreeClimbing {
                             ? (handsOnly ? JumpType.CLIMB_BACK_HEAD_HANDS_ONLY : JumpType.CLIMB_BACK_HEAD)
                             : (handsOnly ? JumpType.CLIMB_BACK_UP_HANDS_ONLY : JumpType.CLIMB_BACK_UP);
 
-                    float jumpAngle = player.getYaw() + 180F;
+                    float jumpAngle = player.getYRot() + 180F;
                     if (Jumps.tryJump(player, state, type, MoveSpeed.STANDING, jumpAngle,
                             state.jumpMotionX, state.jumpMotionZ)) {
                         state.climbing = false;
                         state.climbHolding = false;
-                        player.setYaw(jumpAngle);
+                        player.setYRot(jumpAngle);
                     }
                 }
             }
@@ -304,12 +304,12 @@ public final class FreeClimbing {
 
         if (state.climbing) {
             // 원작 handleCrash(): 대미지는 서버가 준다 (PlayerEntityMixin). 여기서는 낙하 거리만 지운다.
-            player.onLanding();
+            player.resetFallDistance();
         }
     }
 
     /** 원작 setOnlyShouldClimbSpeed() */
-    private static void setClimbSpeed(PlayerEntity player, SmartMovingState state, SmartMovingConfig cfg, double value) {
+    private static void setClimbSpeed(Player player, SmartMovingState state, SmartMovingConfig cfg, double value) {
         state.climbing = true;
 
         // 틈으로 막 들어간 뒤에는 잠깐 매달린 채로 있는다.
@@ -331,19 +331,19 @@ public final class FreeClimbing {
             }
         }
 
-        Vec3d v = player.getVelocity();
+        Vec3 v = player.getDeltaMovement();
         if (value < 0 || value > v.y) {
-            player.setVelocity(v.x, value, v.z);
+            player.setDeltaMovement(v.x, value, v.z);
         }
     }
 
     /** 원작 getSpeedFactor(): 이동 속도 속성(신속 효과 등) 기준, 바닐라 달리기 보정은 뺀다 */
-    private static float speedFactor(PlayerEntity player) {
-        float speed = (float) player.getAttributeValue(EntityAttributes.MOVEMENT_SPEED) * 10F;
+    private static float speedFactor(Player player) {
+        float speed = (float) player.getAttributeValue(Attributes.MOVEMENT_SPEED) * 10F;
         return player.isSprinting() ? speed / 1.3F : speed;
     }
 
-    private static boolean isSolid(World world, int x, int y, int z) {
+    private static boolean isSolid(Level world, int x, int y, int z) {
         BlockPos pos = new BlockPos(x, y, z);
         return !world.getBlockState(pos).getCollisionShape(world, pos).isEmpty();
     }

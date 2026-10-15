@@ -1,21 +1,21 @@
 package com.smartmoving.network;
 
 import com.smartmoving.SmartMoving;
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.codec.PacketCodecs;
-import net.minecraft.network.packet.CustomPayload;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
 /** 서버 → 다른 클라이언트: "entityId 플레이어의 상태가 이렇다" (자세/애니메이션 표시용) */
-public record StateSyncS2CPayload(int entityId, int flags) implements CustomPayload {
-    public static final Id<StateSyncS2CPayload> ID = new Id<>(SmartMoving.id("state_sync"));
-    public static final PacketCodec<RegistryByteBuf, StateSyncS2CPayload> CODEC = PacketCodec.tuple(
-            PacketCodecs.VAR_INT, StateSyncS2CPayload::entityId,
-            PacketCodecs.VAR_INT, StateSyncS2CPayload::flags,
+public record StateSyncS2CPayload(int entityId, int flags) implements CustomPacketPayload {
+    public static final Type<StateSyncS2CPayload> ID = new Type<>(SmartMoving.id("state_sync"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, StateSyncS2CPayload> CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT, StateSyncS2CPayload::entityId,
+            ByteBufCodecs.VAR_INT, StateSyncS2CPayload::flags,
             StateSyncS2CPayload::new);
 
     @Override
-    public Id<? extends CustomPayload> getId() {
+    public Type<? extends CustomPacketPayload> type() {
         return ID;
     }
 }

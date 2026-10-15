@@ -4,10 +4,10 @@ import com.smartmoving.SmartMoving;
 import com.smartmoving.config.SmartMovingConfig;
 import com.smartmoving.logic.climb.FreeClimbing;
 import com.smartmoving.state.SmartMovingState;
-import net.minecraft.entity.MovementType;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * 바닐라 travel() 대신 실행되는 이동 물리.
@@ -30,7 +30,7 @@ public final class MovementPhysics {
      * @param input 바닐라 이동 입력 (x = 좌(+)/우(-), z = 앞(+)/뒤(-))
      * @return true 면 바닐라 travel 을 취소한다
      */
-    public static boolean travel(PlayerEntity player, SmartMovingState state, Vec3d input) {
+    public static boolean travel(Player player, SmartMovingState state, Vec3 input) {
         if (state.sliding || state.headJumping) {
             FreeClimbing.reset(state);
         }
@@ -49,17 +49,17 @@ public final class MovementPhysics {
      * 슬라이딩: 입력 가속 없이 관성으로 미끄러진다.
      * 바닥 블록이 미끄러울수록(얼음) 덜 감속하고, 좌우 키로 조금씩 방향을 튼다.
      */
-    private static void slide(PlayerEntity player, SmartMovingState state, Vec3d input) {
+    private static void slide(Player player, SmartMovingState state, Vec3 input) {
         SmartMovingConfig cfg = SmartMoving.CONFIG;
-        Vec3d v = player.getVelocity();
+        Vec3 v = player.getDeltaMovement();
         double motionX = v.x;
         double motionZ = v.z;
         double damping;
 
-        if (player.isOnGround()) {
+        if (player.onGround()) {
             // 바닐라 getVelocityAffectingPos() 와 같은 위치 (발 0.5칸 아래)
-            BlockPos below = BlockPos.ofFloored(player.getX(), player.getBoundingBox().minY - 0.5000001, player.getZ());
-            float slipperiness = player.getWorld().getBlockState(below).getBlock().getSlipperiness();
+            BlockPos below = BlockPos.containing(player.getX(), player.getBoundingBox().minY - 0.5000001, player.getZ());
+            float slipperiness = player.level().getBlockState(below).getBlock().getFriction();
             damping = 1.0 / (((1.0 / slipperiness) - 1.0) / 25.0 * cfg.slideGlideFactor + 1.0) * 0.98;
 
             if (input.x != 0 && cfg.slideControlDegrees > 0) {
@@ -76,8 +76,8 @@ public final class MovementPhysics {
             damping = HORIZONTAL_AIR_DAMPING;
         }
 
-        player.setVelocity(motionX, v.y, motionZ);
-        player.move(MovementType.SELF, player.getVelocity());
+        player.setDeltaMovement(motionX, v.y, motionZ);
+        player.move(MoverType.SELF, player.getDeltaMovement());
         // 원작 handleLand(): 이동 직후 벽 타기 판정 (슬라이딩하다 벽을 잡으면 기어가는 자세로 오른다)
         FreeClimbing.afterMove(player, state);
         applyGravityAndDamping(player, damping);
@@ -87,16 +87,16 @@ public final class MovementPhysics {
      * 헤드 점프: 공중 조작이 약하고(원작 0.2배),
      * 슬라이딩하다 떨어진 경우(aerodynamic)에는 공기 저항이 거의 없어 멀리 날아간다.
      */
-    private static void headJump(PlayerEntity player, SmartMovingState state, Vec3d input) {
+    private static void headJump(Player player, SmartMovingState state, Vec3 input) {
         SmartMovingConfig cfg = SmartMoving.CONFIG;
-        player.updateVelocity(AIR_ACCELERATION * cfg.headJumpControlFactor, input);
-        player.move(MovementType.SELF, player.getVelocity());
+        player.moveRelative(AIR_ACCELERATION * cfg.headJumpControlFactor, input);
+        player.move(MoverType.SELF, player.getDeltaMovement());
         applyGravityAndDamping(player, state.aerodynamic ? HORIZONTAL_AERODYNAMIC_DAMPING : HORIZONTAL_AIR_DAMPING);
     }
 
-    private static void applyGravityAndDamping(PlayerEntity player, double horizontalDamping) {
-        Vec3d after = player.getVelocity();
-        double y = (after.y - player.getFinalGravity()) * 0.98;
-        player.setVelocity(after.x * horizontalDamping, y, after.z * horizontalDamping);
+    private static void applyGravityAndDamping(Player player, double horizontalDamping) {
+        Vec3 after = player.getDeltaMovement();
+        double y = (after.y - player.getGravity()) * 0.98;
+        player.setDeltaMovement(after.x * horizontalDamping, y, after.z * horizontalDamping);
     }
 }

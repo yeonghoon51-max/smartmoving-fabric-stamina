@@ -6,14 +6,14 @@ import com.smartmoving.SmartMoving;
 import com.smartmoving.config.SmartMovingConfig;
 import com.smartmoving.logic.climb.Orientation;
 import com.smartmoving.state.SmartMovingState;
-import net.minecraft.entity.MovementType;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.fluid.FluidState;
-import net.minecraft.registry.tag.FluidTags;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
 
 /**
  * 원작 수영/잠수.
@@ -38,11 +38,11 @@ public final class SmartSwimming {
     }
 
     /**
-     * 원작 handleSwimming(). PlayerEntity.travel() 시작에서 부른다.
+     * 원작 handleSwimming(). Player.travel() 시작에서 부른다.
      *
      * @return true 면 바닐라 이동(물속 이동)을 취소한다
      */
-    public static boolean travel(PlayerEntity player, SmartMovingState state, Vec3d input) {
+    public static boolean travel(Player player, SmartMovingState state, Vec3 input) {
         SmartMovingConfig cfg = SmartMoving.CONFIG;
         boolean wasSwimming = state.swimming;
         boolean wasDiving = state.diving;
@@ -50,8 +50,8 @@ public final class SmartSwimming {
 
         boolean liquidClimbing = cfg.enableClimbing && player.fallDistance <= 3.0 && state.wantClimbUp
                 && player.horizontalCollision && !state.diving;
-        boolean handle = !state.flying && !liquidClimbing && !player.hasVehicle()
-                && (player.isTouchingWater() || (wasSwimming && isInLiquid(player)));
+        boolean handle = !state.flying && !liquidClimbing && !player.isPassenger()
+                && (player.isInWater() || (wasSwimming && isInLiquid(player)));
         if (!handle || (!cfg.enableSwimming && !cfg.enableDiving)) {
             reset(state);
             return false;
@@ -63,7 +63,7 @@ public final class SmartSwimming {
             return false;
         }
 
-        World world = player.getWorld();
+        Level world = player.level();
         float moveStrafing = (float) input.x;
         float moveForward = (float) input.z;
 
@@ -72,9 +72,9 @@ public final class SmartSwimming {
         double minY = player.getBoundingBox().minY - (small ? 1D : 0D);
         double maxY = minY + BODY_HEIGHT;
 
-        int i = MathHelper.floor(player.getX());
-        int j = MathHelper.floor(minY);
-        int k = MathHelper.floor(player.getZ());
+        int i = Mth.floor(player.getX());
+        int j = Mth.floor(minY);
+        int k = Mth.floor(player.getZ());
 
         double totalSwimWaterBorder = maxLiquidBetween(player, maxY - BODY_HEIGHT, maxY + 1.2);
         double minPlayerSwimWaterCeiling = Solids.minBetween(player, maxY - BODY_HEIGHT, maxY + 1.2, 0);
@@ -110,7 +110,7 @@ public final class SmartSwimming {
         float speedFactor = MoveFlying.baseSpeedFactor(player) * (isFast ? cfg.sprintFactor : 1F);
 
         boolean wantShallowSwim = couldStandUp && (wasSwimming || wasDiving);
-        if (wantShallowSwim && Orientation.isTunnelAhead(world, Orientation.normalizeYaw(player.getYaw()), i, j, k)) {
+        if (wantShallowSwim && Orientation.isTunnelAhead(world, Orientation.normalizeYaw(player.getYRot()), i, j, k)) {
             wantShallowSwim = false;
         }
 
@@ -123,7 +123,7 @@ public final class SmartSwimming {
 
         if (playerSwimWaterBorder >= 0 && playerSwimWaterBorder <= 2) {
             double offset = playerSwimWaterBorder + 0.1625D; // 원작의 미세 조정 값
-            boolean moveSwim = player.getPitch() < 0F && moveForward > 0F || player.getPitch() > 0F && moveForward < 0F;
+            boolean moveSwim = player.getXRot() < 0F && moveForward > 0F || player.getXRot() > 0F && moveForward < 0F;
             if (diveUp || moveSwim || wantShallowSwim) {
                 if (offset < 1.4) {
                     dipping = true;
@@ -173,7 +173,7 @@ public final class SmartSwimming {
         } else if (playerSwimWaterBorder > 2) {
             diving = true;
             if (diveUp) {
-                if (isFast && playerSwimWaterBorder < 2.5 && world.isAir(new BlockPos(i, j + 3, k))) {
+                if (isFast && playerSwimWaterBorder < 2.5 && world.getBlockState(new BlockPos(i, j + 3, k)).isAir()) {
                     motionYDiff = 0.11D / cfg.sprintFactor;
                 } else {
                     motionYDiff = 0.01 + 0.1 * speedFactor;
@@ -196,7 +196,7 @@ public final class SmartSwimming {
             return false; // 바닐라 물 이동
         }
 
-        Vec3d v = player.getVelocity();
+        Vec3 v = player.getDeltaMovement();
         double motionX = v.x;
         double motionY = v.y;
         double motionZ = v.z;
@@ -229,9 +229,9 @@ public final class SmartSwimming {
         // 헤엄치다 물가 벽에 부딪히며 점프하면 물 밖으로 뛰어오른다
         boolean wantJumpOutOfWater = (moveForward != 0 || moveStrafing != 0) && player.horizontalCollision && diveUp && !sneak;
         state.jumpingOutOfWater = wantJumpOutOfWater
-                && (state.waterMovementTicks > 10 || player.isOnGround() || wasJumpingOutOfWater);
+                && (state.waterMovementTicks > 10 || player.onGround() || wasJumpingOutOfWater);
 
-        player.setVelocity(motionX, motionY, motionZ);
+        player.setDeltaMovement(motionX, motionY, motionZ);
         boolean moveFlying = true;
         if (diving) {
             if (diveUp || diveDown || levitating) {
@@ -265,16 +265,16 @@ public final class SmartSwimming {
             } else {
                 double bb = player.getBoundingBox().minY;
                 double lift = Solids.maxBetween(player, bb, bb + BODY_HEIGHT, 0) - bb;
-                if (lift > 0) player.move(MovementType.SELF, new Vec3d(0, lift, 0));
+                if (lift > 0) player.move(MoverType.SELF, new Vec3(0, lift, 0));
             }
         }
 
         if (moveFlying) {
             // 원작 sp.moveFlying(): 수평 입력만, 1.8 바닐라와 같은 방식
-            player.updateVelocity(0.02F * speedFactor, new Vec3d(moveStrafing, 0, moveForward));
+            player.moveRelative(0.02F * speedFactor, new Vec3(moveStrafing, 0, moveForward));
         }
-        player.move(MovementType.SELF, player.getVelocity());
-        player.onLanding();
+        player.move(MoverType.SELF, player.getDeltaMovement());
+        player.resetFallDistance();
         return true;
     }
 
@@ -287,26 +287,26 @@ public final class SmartSwimming {
         state.waterMovementTicks = 0;
     }
 
-    private static void setVelocityY(PlayerEntity player, double y) {
-        Vec3d v = player.getVelocity();
-        player.setVelocity(v.x, y, v.z);
+    private static void setVelocityY(Player player, double y) {
+        Vec3 v = player.getDeltaMovement();
+        player.setDeltaMovement(v.x, y, v.z);
     }
 
     /** 원작 isInLiquid() */
-    private static boolean isInLiquid(PlayerEntity player) {
+    private static boolean isInLiquid(Player player) {
         double minY = player.getBoundingBox().minY;
         return maxLiquidBetween(player, minY, minY + BODY_HEIGHT) != minY;
     }
 
     /** 원작 getMaxPlayerLiquidBetween(): 위에서부터 내려가며 처음 만난 물의 수면 높이 */
-    private static double maxLiquidBetween(PlayerEntity player, double yMin, double yMax) {
-        World world = player.getWorld();
-        int i = MathHelper.floor(player.getX());
-        int k = MathHelper.floor(player.getZ());
-        for (int j = MathHelper.floor(yMax); j >= MathHelper.floor(yMin); j--) {
+    private static double maxLiquidBetween(Player player, double yMin, double yMax) {
+        Level world = player.level();
+        int i = Mth.floor(player.getX());
+        int k = Mth.floor(player.getZ());
+        for (int j = Mth.floor(yMax); j >= Mth.floor(yMin); j--) {
             BlockPos pos = new BlockPos(i, j, k);
             FluidState fluid = world.getFluidState(pos);
-            if (fluid.isIn(FluidTags.WATER)) {
+            if (fluid.is(FluidTags.WATER)) {
                 float border = fluid.getHeight(world, pos);
                 if (border > 0) return j + border;
             }

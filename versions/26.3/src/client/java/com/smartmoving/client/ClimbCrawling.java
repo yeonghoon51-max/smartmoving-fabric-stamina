@@ -4,10 +4,10 @@ package com.smartmoving.client;
 
 import com.smartmoving.logic.Solids;
 import com.smartmoving.state.SmartMovingState;
-import net.minecraft.entity.EntityPose;
-import net.minecraft.entity.MovementType;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * 원작의 두 가지 "작은 자세로 오르기".
@@ -38,7 +38,7 @@ public final class ClimbCrawling {
      * @param forward    앞키 (원작 moveForward > 0)
      * @param crawlInput 웅크리기 키 또는 기어가기 토글 (원작 sneakButton.Pressed || crawlToggled)
      */
-    public static void tick(PlayerEntity player, SmartMovingState state, boolean forward, boolean crawlInput,
+    public static void tick(Player player, SmartMovingState state, boolean forward, boolean crawlInput,
                             boolean special) {
         if (special) {
             if (state.climbCrawling || state.crawlClimbing) {
@@ -55,7 +55,7 @@ public final class ClimbCrawling {
     }
 
     /** 원작 isCrawlClimbing 부분 */
-    private static void tickCrawlClimbing(PlayerEntity player, SmartMovingState state, boolean forward,
+    private static void tickCrawlClimbing(Player player, SmartMovingState state, boolean forward,
                                           boolean crawlInput) {
         boolean wasCrawlClimbing = state.crawlClimbing;
         state.crawlClimbing = (state.wasCrawling || state.crawlClimbing) && state.climbing && state.neighborClimbing
@@ -98,7 +98,7 @@ public final class ClimbCrawling {
     }
 
     /** 원작 isClimbCrawling 부분 */
-    private static void tickClimbCrawling(PlayerEntity player, SmartMovingState state, boolean crawlInput) {
+    private static void tickClimbCrawling(Player player, SmartMovingState state, boolean crawlInput) {
         boolean wasClimbCrawling = state.climbCrawling;
         boolean needClimbCrawling = state.hasClimbCrawlGap || (state.hasClimbGap && state.climbHolding);
         boolean canClimbCrawling = state.wantClimbHolding && state.wantClimbUp;
@@ -117,12 +117,12 @@ public final class ClimbCrawling {
             boolean alreadySmall = state.crawling || state.crawlClimbing;
             if (!alreadySmall) {
                 // 몸을 납작하게 해서 원래 몸의 윗부분 자리에 둔다
-                player.setPose(EntityPose.SWIMMING);
-                player.setPosition(player.getX(), player.getY() + (STANDING_HEIGHT - SMALL_HEIGHT), player.getZ());
+                player.setPose(Pose.SWIMMING);
+                player.setPos(player.getX(), player.getY() + (STANDING_HEIGHT - SMALL_HEIGHT), player.getZ());
             }
             // 머리 위가 막혀 있을 때 틈 안의 블록에 끼지 않도록 살짝 올린다 (원작 그대로)
             boolean wasCollidedHorizontally = player.horizontalCollision;
-            player.move(MovementType.SELF, new Vec3d(0, 0.05, 0));
+            player.move(MoverType.SELF, new Vec3(0, 0.05, 0));
             player.horizontalCollision = wasCollidedHorizontally;
         } else if (!state.climbCrawling && wasClimbCrawling) {
             state.climbIntoCount = 0;
@@ -145,7 +145,7 @@ public final class ClimbCrawling {
     }
 
     /** 원작 mustCrawl: 작은 상자 기준으로 일어설 높이(1.8)가 안 되는가 */
-    private static boolean mustCrawl(PlayerEntity player) {
+    private static boolean mustCrawl(Player player) {
         double minY = player.getBoundingBox().minY;
         double bottom = Solids.maxBetween(player, minY - 1D, minY, 0);
         double top = minY + SMALL_HEIGHT;
@@ -154,13 +154,13 @@ public final class ClimbCrawling {
     }
 
     /** 원작 resetHeightOffset(): 잘라냈던 아래쪽 1칸을 되돌린다 (발이 상자 아래 1칸으로) */
-    private static void standUp(PlayerEntity player) {
-        player.setPose(EntityPose.STANDING);
-        player.setPosition(player.getX(), player.getY() - (STANDING_HEIGHT - SMALL_HEIGHT), player.getZ());
+    private static void standUp(Player player) {
+        player.setPose(Pose.STANDING);
+        player.setPos(player.getX(), player.getY() - (STANDING_HEIGHT - SMALL_HEIGHT), player.getZ());
     }
 
-    private static void moveVertical(PlayerEntity player, double dy) {
+    private static void moveVertical(Player player, double dy) {
         if (dy == 0) return;
-        player.move(MovementType.SELF, new Vec3d(0, dy, 0));
+        player.move(MoverType.SELF, new Vec3(0, dy, 0));
     }
 }

@@ -3,10 +3,10 @@ package com.smartmoving.logic;
 import com.smartmoving.SmartMoving;
 import com.smartmoving.config.SmartMovingConfig;
 import com.smartmoving.state.SmartMovingState;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * 원작 SmartMovingSelf.tryJump() 의 포트.
@@ -21,9 +21,9 @@ public final class Jumps {
     private Jumps() {
     }
 
-    public static boolean tryJump(PlayerEntity player, SmartMovingState state, JumpType type, MoveSpeed speed,
+    public static boolean tryJump(Player player, SmartMovingState state, JumpType type, MoveSpeed speed,
                                   Float angleDegrees) {
-        Vec3d v = player.getVelocity();
+        Vec3 v = player.getDeltaMovement();
         return tryJump(player, state, type, speed, angleDegrees, v.x, v.z);
     }
 
@@ -31,7 +31,7 @@ public final class Jumps {
      * @param jumpMotionX 원작 jumpMotionX/Z: 점프 계산에 쓰는 수평 속도.
      *                    이동이 끝난 뒤의 점프(벽 점프 등)에서는 벽에 부딪히기 전 속도를 넘긴다.
      */
-    public static boolean tryJump(PlayerEntity player, SmartMovingState state, JumpType type, MoveSpeed speed,
+    public static boolean tryJump(Player player, SmartMovingState state, JumpType type, MoveSpeed speed,
                                   Float angleDegrees, double jumpMotionX, double jumpMotionZ) {
         SmartMovingConfig cfg = SmartMoving.CONFIG;
 
@@ -86,7 +86,7 @@ public final class Jumps {
 
         // ---- 배율 ----
         float jumpBoost = 1f;
-        StatusEffectInstance effect = player.getStatusEffect(StatusEffects.JUMP_BOOST);
+        MobEffectInstance effect = player.getEffect(MobEffects.JUMP_BOOST);
         if (effect != null) jumpBoost = 1f + (effect.getAmplifier() + 1) * 0.2f;
 
         double horizontalFactor = horizontalFactor(type, speed, cfg) * jumpBoost;
@@ -102,7 +102,7 @@ public final class Jumps {
             verticalFactor = 0;
         }
 
-        Vec3d velocity = player.getVelocity();
+        Vec3 velocity = player.getDeltaMovement();
         double motionX = velocity.x;
         double motionY = velocity.y;
         double motionZ = velocity.z;
@@ -154,7 +154,7 @@ public final class Jumps {
             motionY = verticalMotion;
             state.sprintJump = state.fast;
         }
-        player.setVelocity(motionX, motionY, motionZ);
+        player.setDeltaMovement(motionX, motionY, motionZ);
 
         if (exhaustionApplies) {
             Exhaustion.add(state, gain);

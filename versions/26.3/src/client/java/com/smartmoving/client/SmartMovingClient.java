@@ -7,8 +7,8 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 
 /** 클라이언트 전용 진입점: 키 등록, HUD 등록, 다른 플레이어 상태 수신 */
 public class SmartMovingClient implements ClientModInitializer {
@@ -20,10 +20,10 @@ public class SmartMovingClient implements ClientModInitializer {
         HudElementRegistry.attachElementAfter(VanillaHudElements.FOOD_BAR, SmartMoving.id("stamina"), ExhaustionHud::render);
 
         ClientPlayNetworking.registerGlobalReceiver(StateSyncS2CPayload.ID, (payload, context) -> {
-            if (context.client().world == null) return;
-            Entity entity = context.client().world.getEntityById(payload.entityId());
+            if (context.client().level == null) return;
+            Entity entity = context.client().level.getEntity(payload.entityId());
             // 내 캐릭터 상태는 내가 직접 계산하므로 덮어쓰지 않는다.
-            if (entity instanceof PlayerEntity player && player != context.client().player) {
+            if (entity instanceof Player player && player != context.client().player) {
                 SmartMovingPlayer.of(player).applyFlags(payload.flags());
             }
         });

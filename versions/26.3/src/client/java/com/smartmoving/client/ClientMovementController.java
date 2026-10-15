@@ -11,14 +11,14 @@ import com.smartmoving.network.StateC2SPayload;
 import com.smartmoving.state.SmartMovingPlayer;
 import com.smartmoving.state.SmartMovingState;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.option.GameOptions;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.Options;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * 내 캐릭터의 스마트 무빙 동작을 결정하는 곳.
- * 매 틱 ClientPlayerEntity.tickMovement() 시작 부분에서 호출된다 (바닐라 이동 계산 직전).
+ * 매 틱 LocalPlayer.tickMovement() 시작 부분에서 호출된다 (바닐라 이동 계산 직전).
  *
  * <p>원작 SmartMovingSelf.updateEntityActionState() / handleJumping() / handleExhaustion() 의 포트.
  */
@@ -39,9 +39,9 @@ public final class ClientMovementController {
         }
     }
 
-    public static void tick(ClientPlayerEntity player) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        GameOptions options = client.options;
+    public static void tick(LocalPlayer player) {
+        Minecraft client = Minecraft.getInstance();
+        Options options = client.options;
         SmartMovingConfig cfg = SmartMoving.CONFIG;
         SmartMovingState state = SmartMovingPlayer.of(player);
 
@@ -52,14 +52,14 @@ public final class ClientMovementController {
             return;
         }
 
-        boolean sneak = options.sneakKey.isPressed();
-        boolean sprint = options.sprintKey.isPressed();
-        boolean grab = SmartMovingKeys.GRAB.isPressed() || (cfg.grabUsesSprintKey && sprint);
-        boolean jump = options.jumpKey.isPressed();
-        boolean left = options.leftKey.isPressed();
-        boolean right = options.rightKey.isPressed();
-        boolean back = options.backKey.isPressed();
-        Input in = new Input(options.forwardKey.isPressed(), back, left, right, jump, sneak, sprint, grab,
+        boolean sneak = options.keyShift.isDown();
+        boolean sprint = options.keySprint.isDown();
+        boolean grab = SmartMovingKeys.GRAB.isDown() || (cfg.grabUsesSprintKey && sprint);
+        boolean jump = options.keyJump.isDown();
+        boolean left = options.keyLeft.isDown();
+        boolean right = options.keyRight.isDown();
+        boolean back = options.keyDown.isDown();
+        Input in = new Input(options.keyUp.isDown(), back, left, right, jump, sneak, sprint, grab,
                 sneak && !state.prevSneakKey, grab && !state.prevGrabKey, jump && !state.prevJumpKey,
                 left && !state.prevLeftKey, right && !state.prevRightKey, back && !state.prevBackKey);
         state.prevSneakKey = sneak;
@@ -76,10 +76,10 @@ public final class ClientMovementController {
         state.maxExhaustionForAction = Float.MAX_VALUE;
         state.maxExhaustionToStartAction = Float.MAX_VALUE;
 
-        boolean onGround = player.isOnGround();
+        boolean onGround = player.onGround();
         // 바닐라 특수 상태에서는 스마트 무빙 동작을 하지 않는다.
-        boolean special = player.getAbilities().flying || player.hasVehicle() || player.isSpectator()
-                || player.isTouchingWater() || player.isGliding() || player.isSleeping() || player.isInLava();
+        boolean special = player.getAbilities().flying || player.isPassenger() || player.isSpectator()
+                || player.isInWater() || player.isFallFlying() || player.isSleeping() || player.isInLava();
         state.handlesJumps = !special;
         if (special) {
             state.sliding = false;
@@ -87,7 +87,7 @@ public final class ClientMovementController {
             state.aerodynamic = false;
         }
 
-        Vec3d velocity = player.getVelocity();
+        Vec3 velocity = player.getDeltaMovement();
         double horizontalSpeedSquare = velocity.x * velocity.x + velocity.z * velocity.z;
         boolean standing = horizontalSpeedSquare < 0.0005;
 
@@ -99,7 +99,7 @@ public final class ClientMovementController {
         tickClimb(player, state, cfg, in, onGround, special);
         ClimbCrawling.tick(player, state, in.forward() && !in.back(), in.sneak() || state.crawlToggled, special);
         tickWallAndAngleJumps(player, state, cfg, in, onGround, special);
-        Vec3d jumpMotion = player.getVelocity();
+        Vec3 jumpMotion = player.getDeltaMovement();
         state.jumpMotionX = jumpMotion.x;
         state.jumpMotionZ = jumpMotion.z;
         if (state.handlesJumps) {
@@ -107,9 +107,9 @@ public final class ClientMovementController {
         }
 
         // ---------- 빠른 사다리 ----------
-        if (cfg.enableFasterLadders && player.isClimbing() && in.forward() && !in.sneak() && player.horizontalCollision) {
-            Vec3d v = player.getVelocity();
-            if (v.y < cfg.ladderUpSpeed) player.setVelocity(v.x, cfg.ladderUpSpeed, v.z);
+        if (cfg.enableFasterLadders && player.onClimbable() && in.forward() && !in.sneak() && player.horizontalCollision) {
+            Vec3 v = player.getDeltaMovement();
+            if (v.y < cfg.ladderUpSpeed) player.setDeltaMovement(v.x, cfg.ladderUpSpeed, v.z);
         }
 
         tickExhaustion(player, state, cfg, in, onGround, standing);
@@ -119,7 +119,7 @@ public final class ClientMovementController {
     }
 
     /** 원작: 달리기 키를 누르고 달리면 isFast(1.5배, 지침 증가), 키 없이 달리면 isRunning(바닐라) */
-    private static void tickSprint(ClientPlayerEntity player, SmartMovingState state, SmartMovingConfig cfg,
+    private static void tickSprint(LocalPlayer player, SmartMovingState state, SmartMovingConfig cfg,
                                    Input in, boolean onGround, boolean special) {
         state.wasFast = state.fast;
         state.wasRunning = state.running;
@@ -179,7 +179,7 @@ public final class ClientMovementController {
     }
 
     /** 원작 2403~2450행: 헤드 점프 착지, 슬라이딩 시작/끝, 슬라이딩 → 활공 */
-    private static void tickHeadJumpAndSlide(ClientPlayerEntity player, SmartMovingState state, SmartMovingConfig cfg,
+    private static void tickHeadJumpAndSlide(LocalPlayer player, SmartMovingState state, SmartMovingConfig cfg,
                                              Input in, boolean onGround, double horizontalSpeedSquare) {
         boolean wasHeadJumping = state.headJumping;
         state.headJumping = state.headJumping && !onGround;
@@ -204,7 +204,7 @@ public final class ClientMovementController {
         boolean sprintingNow = state.fast || state.wasFast;
         boolean runningNow = state.running || state.wasRunning;
         if (cfg.enableSliding && in.grab() && onGround && (sprintingNow || runningNow)
-                && !state.crawling && in.sneakStart() && !player.isTouchingWater()) {
+                && !state.crawling && in.sneakStart() && !player.isInWater()) {
             // 원작처럼 지침 때문에 부스트가 실패해도 슬라이딩 자체는 시작한다.
             Jumps.tryJump(player, state, JumpType.SLIDE_DOWN,
                     sprintingNow ? MoveSpeed.SPRINTING : MoveSpeed.RUNNING, null);
@@ -228,9 +228,9 @@ public final class ClientMovementController {
     }
 
     /** 원작: 웅크린 채 잡기를 누르면 기어가기, 웅크리기를 떼면 일어선다 (공간이 없으면 계속) */
-    private static void tickCrawl(ClientPlayerEntity player, SmartMovingState state, SmartMovingConfig cfg,
+    private static void tickCrawl(LocalPlayer player, SmartMovingState state, SmartMovingConfig cfg,
                                   Input in, boolean onGround, boolean special) {
-        while (SmartMovingKeys.CRAWL.wasPressed()) {
+        while (SmartMovingKeys.CRAWL.consumeClick()) {
             state.crawlToggled = !state.crawlToggled;
         }
 
@@ -248,7 +248,7 @@ public final class ClientMovementController {
      * 원작 updateEntityActionState() 의 wantClimb / wantClimbUp / wantClimbDown / isClimbHolding.
      * 실제로 벽을 타는지는 이동 직후 logic.climb.FreeClimbing 이 손/발로 잡을 곳을 찾아 정한다.
      */
-    private static void tickClimb(ClientPlayerEntity player, SmartMovingState state, SmartMovingConfig cfg,
+    private static void tickClimb(LocalPlayer player, SmartMovingState state, SmartMovingConfig cfg,
                                   Input in, boolean onGround, boolean special) {
         boolean forward = in.forward() && !in.back();
 
@@ -280,7 +280,7 @@ public final class ClientMovementController {
     }
 
     /** 원작 updateEntityActionState() 의 벽 점프 / 옆·뒤 점프 판정 */
-    private static void tickWallAndAngleJumps(ClientPlayerEntity player, SmartMovingState state, SmartMovingConfig cfg,
+    private static void tickWallAndAngleJumps(LocalPlayer player, SmartMovingState state, SmartMovingConfig cfg,
                                               Input in, boolean onGround, boolean special) {
         // ---- 벽 점프 ----
         if (state.continueWallJumping && (onGround || state.climbing || !in.jump())) {
@@ -340,7 +340,7 @@ public final class ClientMovementController {
     }
 
     /** 원작 handleJumping(): 일반 점프, 모아 뛰기, 헤드 점프 */
-    private static void handleJumping(ClientPlayerEntity player, SmartMovingState state, SmartMovingConfig cfg,
+    private static void handleJumping(LocalPlayer player, SmartMovingState state, SmartMovingConfig cfg,
                                       Input in, boolean onGround, boolean standing) {
         if (state.climbing) return;
 
@@ -417,7 +417,7 @@ public final class ClientMovementController {
             MoveSpeed angleSpeed = sneaking && onGround ? MoveSpeed.SNEAKING
                     : standing ? MoveSpeed.STANDING
                     : MoveSpeed.WALKING;
-            Jumps.tryJump(player, state, JumpType.ANGLE, angleSpeed, player.getYaw() + angle);
+            Jumps.tryJump(player, state, JumpType.ANGLE, angleSpeed, player.getYRot() + angle);
 
             state.leftJumpCount = 0;
             state.rightJumpCount = 0;
@@ -426,14 +426,14 @@ public final class ClientMovementController {
     }
 
     /** 원작 handleExhaustion(): 행동하면 오르고, 배고픔이 충분하면 쉬는 동안 내려간다 */
-    private static void tickExhaustion(ClientPlayerEntity player, SmartMovingState state, SmartMovingConfig cfg,
+    private static void tickExhaustion(LocalPlayer player, SmartMovingState state, SmartMovingConfig cfg,
                                        Input in, boolean onGround, boolean standing) {
         if (!Exhaustion.enabled()) {
             state.exhaustion = 0f;
             return;
         }
 
-        Vec3d v = player.getVelocity();
+        Vec3 v = player.getDeltaMovement();
         boolean verticalStill = Math.abs(v.y) < 0.007;
         boolean still = standing && verticalStill && !in.moving();
 
@@ -452,7 +452,7 @@ public final class ClientMovementController {
         }
         state.exhaustion += additional;
 
-        if (state.exhaustion > 0f && player.getHungerManager().getFoodLevel() > cfg.exhaustionLossFoodMinimum) {
+        if (state.exhaustion > 0f && player.getFoodData().getFoodLevel() > cfg.exhaustionLossFoodMinimum) {
             boolean sneaking = in.sneak() && !state.crawling && !state.sliding;
             state.exhaustion -= Exhaustion.lossFactor(onGround, standing, still, sneaking,
                     state.running, state.fast || state.climbFast || state.liquidFast,

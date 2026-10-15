@@ -19,6 +19,8 @@ jobs:
             java: '21'
           - mc: '1.21.8'
             java: '21'
+          - mc: '26.3'
+            java: '25'
     name: build (${{ matrix.mc }})
     runs-on: ubuntu-latest
     defaults:

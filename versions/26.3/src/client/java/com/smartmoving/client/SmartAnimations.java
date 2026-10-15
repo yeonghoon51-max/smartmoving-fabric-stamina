@@ -5,11 +5,11 @@ package com.smartmoving.client;
 import com.smartmoving.state.SmartMovingPlayer;
 import com.smartmoving.state.SmartMovingState;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.client.model.ModelPart;
-import net.minecraft.client.render.entity.model.BipedEntityModel;
-import net.minecraft.client.render.entity.state.BipedEntityRenderState;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.util.Mth;
 
 /**
  * 원작 Smart Render 의 스마트 무빙 애니메이션 (SmartMovingModel.setRotationAngles) 중 팔·다리·머리 부분.
@@ -34,14 +34,14 @@ public final class SmartAnimations {
     /** 원작 SmartStatistics: 매 틱 모든 플레이어의 움직인 거리를 누적한다 */
     public static void register() {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (client.world == null || client.isPaused()) return;
-            for (PlayerEntity player : client.world.getPlayers()) {
+            if (client.level == null || client.isPaused()) return;
+            for (Player player : client.level.players()) {
                 tickStatistics(player, SmartMovingPlayer.of(player));
             }
         });
     }
 
-    private static void tickStatistics(PlayerEntity player, SmartMovingState s) {
+    private static void tickStatistics(Player player, SmartMovingState s) {
         double x = player.getX();
         double y = player.getY();
         double z = player.getZ();
@@ -80,12 +80,12 @@ public final class SmartAnimations {
         }
     }
 
-    /** BipedEntityModel.setAngles() 끝에서 부른다. 스마트 무빙 동작 중이 아니면 아무것도 하지 않는다. */
-    public static void apply(BipedEntityModel<?> model, BipedEntityRenderState state, PlayerEntity player) {
+    /** HumanoidModel.setAngles() 끝에서 부른다. 스마트 무빙 동작 중이 아니면 아무것도 하지 않는다. */
+    public static void apply(HumanoidModel<?> model, HumanoidRenderState state, Player player) {
         SmartMovingState s = SmartMovingPlayer.of(player);
-        float totalTime = state.age;
-        float viewVerticalAngle = state.pitch * RADIANS_PER_DEGREE;
-        float viewHorizontalAngle = state.relativeHeadYaw * RADIANS_PER_DEGREE;
+        float totalTime = state.ageInTicks;
+        float viewVerticalAngle = state.xRot * RADIANS_PER_DEGREE;
+        float viewHorizontalAngle = state.yRot * RADIANS_PER_DEGREE;
 
         ModelPart head = model.head;
         ModelPart rightArm = model.rightArm;
@@ -120,8 +120,8 @@ public final class SmartAnimations {
         float verticalSpeed = Math.min(0.5F, s.animVertical.currentSpeed());
         float horizontalSpeed = Math.min(0.5F, s.animHorizontal.currentSpeed());
 
-        head.yaw = 0F;
-        head.pitch = viewVerticalAngle;
+        head.yRot = 0F;
+        head.xRot = viewVerticalAngle;
 
         // 원작 기본값: 손 UpGrab, 발 DownStep
         float handsDistanceUpFactor = 2F;
@@ -131,19 +131,19 @@ public final class SmartAnimations {
         float feetDistanceUpOffset = -0.3F;
         float feetDistanceSideFactor = 0.5F;
 
-        rightArm.pitch = MathHelper.cos(totalVerticalDistance * FREQUENCE_FACTOR + HALF) * verticalSpeed * handsDistanceUpFactor + handsDistanceUpOffset;
-        leftArm.pitch = MathHelper.cos(totalVerticalDistance * FREQUENCE_FACTOR) * verticalSpeed * handsDistanceUpFactor + handsDistanceUpOffset;
-        rightArm.yaw = MathHelper.cos(totalHorizontalDistance * FREQUENCE_FACTOR + QUARTER) * horizontalSpeed * handsDistanceSideFactor;
-        leftArm.yaw = MathHelper.cos(totalHorizontalDistance * FREQUENCE_FACTOR) * horizontalSpeed * handsDistanceSideFactor;
-        rightArm.roll = 0F;
-        leftArm.roll = 0F;
+        rightArm.xRot = Mth.cos(totalVerticalDistance * FREQUENCE_FACTOR + HALF) * verticalSpeed * handsDistanceUpFactor + handsDistanceUpOffset;
+        leftArm.xRot = Mth.cos(totalVerticalDistance * FREQUENCE_FACTOR) * verticalSpeed * handsDistanceUpFactor + handsDistanceUpOffset;
+        rightArm.yRot = Mth.cos(totalHorizontalDistance * FREQUENCE_FACTOR + QUARTER) * horizontalSpeed * handsDistanceSideFactor;
+        leftArm.yRot = Mth.cos(totalHorizontalDistance * FREQUENCE_FACTOR) * horizontalSpeed * handsDistanceSideFactor;
+        rightArm.zRot = 0F;
+        leftArm.zRot = 0F;
 
-        rightLeg.pitch = MathHelper.cos(totalVerticalDistance * FREQUENCE_FACTOR) * feetDistanceUpFactor * verticalSpeed + feetDistanceUpOffset;
-        leftLeg.pitch = MathHelper.cos(totalVerticalDistance * FREQUENCE_FACTOR + HALF) * feetDistanceUpFactor * verticalSpeed + feetDistanceUpOffset;
-        rightLeg.roll = -(MathHelper.cos(totalHorizontalDistance * FREQUENCE_FACTOR) - 1.0F) * horizontalSpeed * feetDistanceSideFactor;
-        leftLeg.roll = -(MathHelper.cos(totalHorizontalDistance * FREQUENCE_FACTOR + QUARTER) + 1.0F) * horizontalSpeed * feetDistanceSideFactor;
-        rightLeg.yaw = 0F;
-        leftLeg.yaw = 0F;
+        rightLeg.xRot = Mth.cos(totalVerticalDistance * FREQUENCE_FACTOR) * feetDistanceUpFactor * verticalSpeed + feetDistanceUpOffset;
+        leftLeg.xRot = Mth.cos(totalVerticalDistance * FREQUENCE_FACTOR + HALF) * feetDistanceUpFactor * verticalSpeed + feetDistanceUpOffset;
+        rightLeg.zRot = -(Mth.cos(totalHorizontalDistance * FREQUENCE_FACTOR) - 1.0F) * horizontalSpeed * feetDistanceSideFactor;
+        leftLeg.zRot = -(Mth.cos(totalHorizontalDistance * FREQUENCE_FACTOR + QUARTER) + 1.0F) * horizontalSpeed * feetDistanceSideFactor;
+        rightLeg.yRot = 0F;
+        leftLeg.yRot = 0F;
     }
 
     /** 원작 isCeilingClimb */
@@ -155,17 +155,17 @@ public final class SmartAnimations {
         float standFactor = factor(currentHorizontalSpeed, 0.12951545F, 0F);
 
         // Half = 팔을 위로 (천장을 잡는다)
-        leftArm.pitch = (MathHelper.cos(distance) * 0.52F + HALF) * walkFactor + HALF * standFactor;
-        rightArm.pitch = (MathHelper.cos(distance + HALF) * 0.52F - HALF) * walkFactor - HALF * standFactor;
+        leftArm.xRot = (Mth.cos(distance) * 0.52F + HALF) * walkFactor + HALF * standFactor;
+        rightArm.xRot = (Mth.cos(distance + HALF) * 0.52F - HALF) * walkFactor - HALF * standFactor;
 
-        leftLeg.pitch = -MathHelper.cos(distance) * 0.12F * walkFactor;
-        rightLeg.pitch = -MathHelper.cos(distance + HALF) * 0.32F * walkFactor;
+        leftLeg.xRot = -Mth.cos(distance) * 0.12F * walkFactor;
+        rightLeg.xRot = -Mth.cos(distance + HALF) * 0.32F * walkFactor;
 
-        float rotateY = MathHelper.cos(distance) * 0.44F * walkFactor;
-        rightArm.yaw = leftArm.yaw = -rotateY;
-        rightLeg.yaw = leftLeg.yaw = -rotateY;
-        rightArm.roll = leftArm.roll = 0F;
-        head.yaw = -rotateY;
+        float rotateY = Mth.cos(distance) * 0.44F * walkFactor;
+        rightArm.yRot = leftArm.yRot = -rotateY;
+        rightLeg.yRot = leftLeg.yRot = -rotateY;
+        rightArm.zRot = leftArm.zRot = 0F;
+        head.yRot = -rotateY;
     }
 
     /** 원작 isSwim: 평영 */
@@ -179,20 +179,20 @@ public final class SmartAnimations {
         float standFactor = factor(currentHorizontalSpeed, 0.15679921F, 0F);
         float standSneakFactor = standFactor + sneakFactor;
 
-        head.yaw = MathHelper.cos(distance / 2.0F - QUARTER) * walkFactor;
-        head.pitch = -EIGHTH * standSneakFactor;
+        head.yRot = Mth.cos(distance / 2.0F - QUARTER) * walkFactor;
+        head.xRot = -EIGHTH * standSneakFactor;
 
-        rightArm.roll = QUARTER + EIGHTH + MathHelper.cos(totalTime * 0.1F) * standSneakFactor * 0.8F;
-        leftArm.roll = -QUARTER - EIGHTH - MathHelper.cos(totalTime * 0.1F) * standSneakFactor * 0.8F;
-        rightArm.pitch = ((distance * 0.5F) % WHOLE - HALF) * walkFactor + SIXTEENTH * standSneakFactor;
-        leftArm.pitch = ((distance * 0.5F + HALF) % WHOLE - HALF) * walkFactor + SIXTEENTH * standSneakFactor;
-        rightArm.yaw = leftArm.yaw = 0F;
+        rightArm.zRot = QUARTER + EIGHTH + Mth.cos(totalTime * 0.1F) * standSneakFactor * 0.8F;
+        leftArm.zRot = -QUARTER - EIGHTH - Mth.cos(totalTime * 0.1F) * standSneakFactor * 0.8F;
+        rightArm.xRot = ((distance * 0.5F) % WHOLE - HALF) * walkFactor + SIXTEENTH * standSneakFactor;
+        leftArm.xRot = ((distance * 0.5F + HALF) % WHOLE - HALF) * walkFactor + SIXTEENTH * standSneakFactor;
+        rightArm.yRot = leftArm.yRot = 0F;
 
-        rightLeg.pitch = MathHelper.cos(distance) * 0.52264464F * walkFactor;
-        leftLeg.pitch = MathHelper.cos(distance + HALF) * 0.52264464F * walkFactor;
-        float rotateFeetAngleZ = SIXTEENTH * standSneakFactor + MathHelper.cos(totalTime * 0.1F) * 0.4F * (standFactor - sneakFactor);
-        rightLeg.roll = rotateFeetAngleZ;
-        leftLeg.roll = -rotateFeetAngleZ;
+        rightLeg.xRot = Mth.cos(distance) * 0.52264464F * walkFactor;
+        leftLeg.xRot = Mth.cos(distance + HALF) * 0.52264464F * walkFactor;
+        float rotateFeetAngleZ = SIXTEENTH * standSneakFactor + Mth.cos(totalTime * 0.1F) * 0.4F * (standFactor - sneakFactor);
+        rightLeg.zRot = rotateFeetAngleZ;
+        leftLeg.zRot = -rotateFeetAngleZ;
     }
 
     /** 원작 isDive */
@@ -203,16 +203,16 @@ public final class SmartAnimations {
         float walkFactor = factor(currentSpeed, 0F, 0.15679921F);
         float standFactor = factor(currentSpeed, 0.15679921F, 0F);
 
-        head.pitch = -EIGHTH;
+        head.xRot = -EIGHTH;
 
-        rightLeg.roll = (MathHelper.cos(distance) + 1F) * 0.52264464F * walkFactor + SIXTEENTH * standFactor;
-        leftLeg.roll = (MathHelper.cos(distance + HALF) - 1F) * 0.52264464F * walkFactor - SIXTEENTH * standFactor;
-        rightLeg.pitch = leftLeg.pitch = 0F;
+        rightLeg.zRot = (Mth.cos(distance) + 1F) * 0.52264464F * walkFactor + SIXTEENTH * standFactor;
+        leftLeg.zRot = (Mth.cos(distance + HALF) - 1F) * 0.52264464F * walkFactor - SIXTEENTH * standFactor;
+        rightLeg.xRot = leftLeg.xRot = 0F;
 
-        rightArm.roll = (MathHelper.cos(distance + HALF) * 0.52264464F * 2.5F + QUARTER) * walkFactor + (QUARTER + EIGHTH) * standFactor;
-        leftArm.roll = (MathHelper.cos(distance) * 0.52264464F * 2.5F - QUARTER) * walkFactor - (QUARTER + EIGHTH) * standFactor;
-        rightArm.pitch = leftArm.pitch = 0F;
-        rightArm.yaw = leftArm.yaw = 0F;
+        rightArm.zRot = (Mth.cos(distance + HALF) * 0.52264464F * 2.5F + QUARTER) * walkFactor + (QUARTER + EIGHTH) * standFactor;
+        leftArm.zRot = (Mth.cos(distance) * 0.52264464F * 2.5F - QUARTER) * walkFactor - (QUARTER + EIGHTH) * standFactor;
+        rightArm.xRot = leftArm.xRot = 0F;
+        rightArm.yRot = leftArm.yRot = 0F;
     }
 
     /** 원작 isCrawl */
@@ -223,20 +223,20 @@ public final class SmartAnimations {
         float walkFactor = factor(currentHorizontalSpeed, 0F, 0.12951545F);
         float standFactor = factor(currentHorizontalSpeed, 0.12951545F, 0F);
 
-        head.roll = -viewHorizontalAngle;
-        head.pitch = -EIGHTH;
+        head.zRot = -viewHorizontalAngle;
+        head.xRot = -EIGHTH;
 
-        rightLeg.pitch = (MathHelper.cos(distance - QUARTER) * SIXTYFOURTH + THIRTYTWOTH) * walkFactor + THIRTYTWOTH * standFactor;
-        leftLeg.pitch = (MathHelper.cos(distance - HALF - QUARTER) * SIXTYFOURTH + THIRTYTWOTH) * walkFactor + THIRTYTWOTH * standFactor;
-        rightLeg.roll = (MathHelper.cos(distance - QUARTER) + 1F) * 0.25F * walkFactor + THIRTYTWOTH * standFactor;
-        leftLeg.roll = (MathHelper.cos(distance - QUARTER) - 1F) * 0.25F * walkFactor - THIRTYTWOTH * standFactor;
+        rightLeg.xRot = (Mth.cos(distance - QUARTER) * SIXTYFOURTH + THIRTYTWOTH) * walkFactor + THIRTYTWOTH * standFactor;
+        leftLeg.xRot = (Mth.cos(distance - HALF - QUARTER) * SIXTYFOURTH + THIRTYTWOTH) * walkFactor + THIRTYTWOTH * standFactor;
+        rightLeg.zRot = (Mth.cos(distance - QUARTER) + 1F) * 0.25F * walkFactor + THIRTYTWOTH * standFactor;
+        leftLeg.zRot = (Mth.cos(distance - QUARTER) - 1F) * 0.25F * walkFactor - THIRTYTWOTH * standFactor;
 
-        rightArm.pitch = HALF + EIGHTH;
-        leftArm.pitch = HALF + EIGHTH;
-        rightArm.roll = (MathHelper.cos(distance + HALF) * SIXTYFOURTH + THIRTYTWOTH) * walkFactor + SIXTEENTH * standFactor;
-        leftArm.roll = (MathHelper.cos(distance + HALF) * SIXTYFOURTH - THIRTYTWOTH) * walkFactor - SIXTEENTH * standFactor;
-        rightArm.yaw = -QUARTER;
-        leftArm.yaw = QUARTER;
+        rightArm.xRot = HALF + EIGHTH;
+        leftArm.xRot = HALF + EIGHTH;
+        rightArm.zRot = (Mth.cos(distance + HALF) * SIXTYFOURTH + THIRTYTWOTH) * walkFactor + SIXTEENTH * standFactor;
+        leftArm.zRot = (Mth.cos(distance + HALF) * SIXTYFOURTH - THIRTYTWOTH) * walkFactor - SIXTEENTH * standFactor;
+        rightArm.yRot = -QUARTER;
+        leftArm.yRot = QUARTER;
     }
 
     /** 원작 isSlide */
@@ -245,20 +245,20 @@ public final class SmartAnimations {
         float distance = s.animHorizontal.total * 0.7F;
         float walkFactor = factor(s.animHorizontal.currentSpeed(), 0F, 1F) * 0.8F;
 
-        head.roll = -viewHorizontalAngle;
-        head.pitch = -EIGHTH - SIXTEENTH;
+        head.zRot = -viewHorizontalAngle;
+        head.xRot = -EIGHTH - SIXTEENTH;
 
-        rightLeg.pitch = MathHelper.cos(distance + HALF) * SIXTYFOURTH * walkFactor + SIXTYFOURTH;
-        leftLeg.pitch = MathHelper.cos(distance + QUARTER) * SIXTYFOURTH * walkFactor + SIXTYFOURTH;
-        rightLeg.roll = THIRTYTWOTH;
-        leftLeg.roll = -THIRTYTWOTH;
+        rightLeg.xRot = Mth.cos(distance + HALF) * SIXTYFOURTH * walkFactor + SIXTYFOURTH;
+        leftLeg.xRot = Mth.cos(distance + QUARTER) * SIXTYFOURTH * walkFactor + SIXTYFOURTH;
+        rightLeg.zRot = THIRTYTWOTH;
+        leftLeg.zRot = -THIRTYTWOTH;
 
-        rightArm.pitch = MathHelper.cos(distance + QUARTER) * SIXTYFOURTH * walkFactor + HALF - SIXTYFOURTH;
-        leftArm.pitch = MathHelper.cos(distance - HALF) * SIXTYFOURTH * walkFactor + HALF - SIXTYFOURTH;
-        rightArm.roll = SIXTEENTH;
-        leftArm.roll = -SIXTEENTH;
-        rightArm.yaw = -QUARTER;
-        leftArm.yaw = QUARTER;
+        rightArm.xRot = Mth.cos(distance + QUARTER) * SIXTYFOURTH * walkFactor + HALF - SIXTYFOURTH;
+        leftArm.xRot = Mth.cos(distance - HALF) * SIXTYFOURTH * walkFactor + HALF - SIXTYFOURTH;
+        rightArm.zRot = SIXTEENTH;
+        leftArm.zRot = -SIXTEENTH;
+        rightArm.yRot = -QUARTER;
+        leftArm.yRot = QUARTER;
     }
 
     /** 원작 isFlying */
@@ -270,16 +270,16 @@ public final class SmartAnimations {
         float standFactor = factor(currentSpeed, 1F, 0F);
         float time = totalTime * 0.15F;
 
-        rightArm.yaw = (MathHelper.cos(time) * SIXTEENTH) * standFactor;
-        leftArm.yaw = (MathHelper.cos(time) * SIXTEENTH) * standFactor;
-        rightArm.roll = (MathHelper.cos(distance + HALF) * SIXTYFOURTH + (HALF - SIXTEENTH)) * walkFactor + QUARTER * standFactor;
-        leftArm.roll = (MathHelper.cos(distance) * SIXTYFOURTH - (HALF - SIXTEENTH)) * walkFactor - QUARTER * standFactor;
-        rightArm.pitch = leftArm.pitch = 0F;
+        rightArm.yRot = (Mth.cos(time) * SIXTEENTH) * standFactor;
+        leftArm.yRot = (Mth.cos(time) * SIXTEENTH) * standFactor;
+        rightArm.zRot = (Mth.cos(distance + HALF) * SIXTYFOURTH + (HALF - SIXTEENTH)) * walkFactor + QUARTER * standFactor;
+        leftArm.zRot = (Mth.cos(distance) * SIXTYFOURTH - (HALF - SIXTEENTH)) * walkFactor - QUARTER * standFactor;
+        rightArm.xRot = leftArm.xRot = 0F;
 
-        rightLeg.pitch = MathHelper.cos(distance) * SIXTYFOURTH * walkFactor + MathHelper.cos(time + HALF) * SIXTYFOURTH * standFactor;
-        leftLeg.pitch = MathHelper.cos(distance + HALF) * SIXTYFOURTH * walkFactor + MathHelper.cos(time) * SIXTYFOURTH * standFactor;
-        rightLeg.roll = SIXTYFOURTH;
-        leftLeg.roll = -SIXTYFOURTH;
+        rightLeg.xRot = Mth.cos(distance) * SIXTYFOURTH * walkFactor + Mth.cos(time + HALF) * SIXTYFOURTH * standFactor;
+        leftLeg.xRot = Mth.cos(distance + HALF) * SIXTYFOURTH * walkFactor + Mth.cos(time) * SIXTYFOURTH * standFactor;
+        rightLeg.zRot = SIXTYFOURTH;
+        leftLeg.zRot = -SIXTYFOURTH;
     }
 
     /** 원작 isHeadJump: 팔을 앞으로 뻗고 다이빙하듯 */
@@ -287,19 +287,19 @@ public final class SmartAnimations {
                                  ModelPart leftLeg) {
         float currentVerticalAngle = s.animVerticalAngle;
         float bendFactor = Math.min(factor(currentVerticalAngle, QUARTER, 0), factor(currentVerticalAngle, -QUARTER, 0));
-        rightArm.pitch = bendFactor * -EIGHTH;
-        leftArm.pitch = bendFactor * -EIGHTH;
-        rightLeg.pitch = bendFactor * -EIGHTH;
-        leftLeg.pitch = bendFactor * -EIGHTH;
+        rightArm.xRot = bendFactor * -EIGHTH;
+        leftArm.xRot = bendFactor * -EIGHTH;
+        rightLeg.xRot = bendFactor * -EIGHTH;
+        leftLeg.xRot = bendFactor * -EIGHTH;
 
         float armFactorZ = factor(currentVerticalAngle, QUARTER, -QUARTER);
-        rightArm.roll = HALF - SIXTEENTH + armFactorZ * EIGHTH;
-        leftArm.roll = SIXTEENTH - HALF - armFactorZ * EIGHTH;
-        rightArm.yaw = leftArm.yaw = 0F;
+        rightArm.zRot = HALF - SIXTEENTH + armFactorZ * EIGHTH;
+        leftArm.zRot = SIXTEENTH - HALF - armFactorZ * EIGHTH;
+        rightArm.yRot = leftArm.yRot = 0F;
 
         float legFactorZ = factor(currentVerticalAngle, -QUARTER, QUARTER);
-        rightLeg.roll = SIXTYFOURTH * legFactorZ;
-        leftLeg.roll = -SIXTYFOURTH * legFactorZ;
+        rightLeg.zRot = SIXTYFOURTH * legFactorZ;
+        leftLeg.zRot = -SIXTYFOURTH * legFactorZ;
     }
 
     /** 원작 Factor: x 가 x0 에서 x1 로 갈 때 0 에서 1 로 (범위 밖은 0 또는 1) */

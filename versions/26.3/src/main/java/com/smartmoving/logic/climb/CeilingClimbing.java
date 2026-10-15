@@ -6,14 +6,14 @@ import com.smartmoving.config.SmartMovingConfig;
 import com.smartmoving.logic.Exhaustion;
 import com.smartmoving.logic.Solids;
 import com.smartmoving.state.SmartMovingState;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.TrapdoorBlock;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
 
 /**
  * 원작 천장 매달리기: 잡기 키를 누른 채 철창이나 닫힌 다락문 바로 아래에 있으면 매달려서 천천히 움직인다.
@@ -27,7 +27,7 @@ public final class CeilingClimbing {
         return state.wantClimbCeiling && !state.crawling && cfg.enableCeilingClimbing;
     }
 
-    static void handle(PlayerEntity player, SmartMovingState state, SmartMovingConfig cfg) {
+    static void handle(Player player, SmartMovingState state, SmartMovingConfig cfg) {
         if (state.climbing) return;
 
         boolean exhaustionEnabled = cfg.ceilingClimbExhaustion && Exhaustion.enabled();
@@ -39,11 +39,11 @@ public final class CeilingClimbing {
             if (!allowed) return;
         }
 
-        World world = player.getWorld();
+        Level world = player.level();
         double jd = player.getBoundingBox().maxY;
-        int i = MathHelper.floor(player.getX());
-        int j = MathHelper.floor(jd);
-        int k = MathHelper.floor(player.getZ());
+        int i = Mth.floor(player.getX());
+        int j = Mth.floor(jd);
+        int k = Mth.floor(player.getZ());
 
         boolean top = supportsCeilingClimbing(world.getBlockState(new BlockPos(i, j, k)));
         boolean bottom = supportsCeilingClimbing(world.getBlockState(new BlockPos(i, j + 1, k)));
@@ -59,16 +59,16 @@ public final class CeilingClimbing {
             else if (jgap > 1.115) motionY = 0.08;
             else motionY = 0.04;
 
-            Vec3d v = player.getVelocity();
-            player.setVelocity(v.x, motionY, v.z);
-            player.onLanding();
+            Vec3 v = player.getDeltaMovement();
+            player.setDeltaMovement(v.x, motionY, v.z);
+            player.resetFallDistance();
             state.ceilingClimbing = true;
         }
     }
 
     /** 원작 supportsCeilingClimbing: 철창, 닫힌 다락문 (나무/철) */
     private static boolean supportsCeilingClimbing(BlockState state) {
-        if (state.isOf(Blocks.IRON_BARS)) return true;
-        return state.getBlock() instanceof TrapdoorBlock && !state.get(TrapdoorBlock.OPEN);
+        if (state.is(Blocks.IRON_BARS)) return true;
+        return state.getBlock() instanceof TrapDoorBlock && !state.getValue(TrapDoorBlock.OPEN);
     }
 }

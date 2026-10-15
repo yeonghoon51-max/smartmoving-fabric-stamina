@@ -5,12 +5,12 @@ import com.smartmoving.config.SmartMovingConfig;
 import com.smartmoving.logic.Exhaustion;
 import com.smartmoving.state.SmartMovingPlayer;
 import com.smartmoving.state.SmartMovingState;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.resources.Identifier;
 
 /**
  * 원작 SmartMovingRender.renderGuiIngame() 의 포트.
@@ -23,16 +23,16 @@ public final class ExhaustionHud {
     private ExhaustionHud() {
     }
 
-    public static void render(DrawContext context, RenderTickCounter tickCounter) {
-        MinecraftClient client = MinecraftClient.getInstance();
+    public static void render(GuiGraphicsExtractor context, DeltaTracker tickCounter) {
+        Minecraft client = Minecraft.getInstance();
         SmartMovingConfig cfg = SmartMoving.CONFIG;
-        ClientPlayerEntity player = client.player;
-        if (player == null || client.options.hudHidden) return;
-        if (client.interactionManager == null || !client.interactionManager.hasStatusBars()) return;
+        LocalPlayer player = client.player;
+        if (player == null) return;
+        if (client.gameMode == null || !client.gameMode.canHurtPlayer()) return;
 
         SmartMovingState state = SmartMovingPlayer.of(player);
-        int width = context.getScaledWindowWidth();
-        int height = context.getScaledWindowHeight();
+        int width = context.guiWidth();
+        int height = context.guiHeight();
 
         if (cfg.showExhaustionBar && Exhaustion.enabled()) {
             renderExhaustion(context, player, state, width, height);
@@ -42,7 +42,7 @@ public final class ExhaustionHud {
         }
     }
 
-    private static void renderExhaustion(DrawContext context, ClientPlayerEntity player, SmartMovingState state,
+    private static void renderExhaustion(GuiGraphicsExtractor context, LocalPlayer player, SmartMovingState state,
                                          int width, int height) {
         float maxExhaustion = Exhaustion.maximum();
         float exhaustion = Math.min(state.exhaustion, maxExhaustion);
@@ -71,7 +71,7 @@ public final class ExhaustionHud {
         int minFitnessToStartActionHalfs = (int) Math.floor(minFitnessToStartAction / maxExhaustion * 21F);
         int minFitnessToStartActionFulls = minFitnessToStartActionHalfs / 2;
 
-        int y = height - 39 - 10 - (player.isSubmergedInWater() ? 10 : 0);
+        int y = height - 39 - 10 - (player.isUnderWater() ? 10 : 0);
         for (int i = 0; i < Math.min(fulls + half, 10); i++) {
             int x = (width / 2 + 90) - (i + 1) * 8;
             int u;
@@ -99,7 +99,7 @@ public final class ExhaustionHud {
         }
     }
 
-    private static void renderJumpCharge(DrawContext context, ClientPlayerEntity player, SmartMovingState state,
+    private static void renderJumpCharge(GuiGraphicsExtractor context, LocalPlayer player, SmartMovingState state,
                                          SmartMovingConfig cfg, int width, int height) {
         float maxStillJumpCharge = cfg.jumpChargeMaximum;
         float stillJumpCharge = Math.min(state.jumpCharge, maxStillJumpCharge);
@@ -114,14 +114,14 @@ public final class ExhaustionHud {
         int fulls = max ? 10 : (int) Math.ceil(((jumpCharge - 2) * 10D) / maxJumpCharge);
         int half = max ? 0 : (int) Math.ceil((jumpCharge * 10D) / maxJumpCharge) - fulls;
 
-        int y = height - 39 - 10 - (player.getArmor() > 0 ? 10 : 0);
+        int y = height - 39 - 10 - (player.getArmorValue() > 0 ? 10 : 0);
         for (int i = 0; i < fulls + half; i++) {
             int x = (width / 2 - 91) + i * 8;
             drawIcon(context, x, y, i < fulls ? 2 : 3, 0);
         }
     }
 
-    private static void drawIcon(DrawContext context, int x, int y, int u, int v) {
-        context.drawTexture(RenderPipelines.GUI_TEXTURED, ICONS, x, y, u * 9f, v * 9f, 9, 9, 256, 256);
+    private static void drawIcon(GuiGraphicsExtractor context, int x, int y, int u, int v) {
+        context.blit(RenderPipelines.GUI_TEXTURED, ICONS, x, y, u * 9f, v * 9f, 9, 9, 256, 256);
     }
 }

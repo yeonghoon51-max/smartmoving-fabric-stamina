@@ -21,6 +21,7 @@ import net.minecraft.block.StairsBlock;
 import net.minecraft.block.TrapdoorBlock;
 import net.minecraft.block.VineBlock;
 import net.minecraft.block.WallBlock;
+import net.minecraft.state.property.Properties;
 import net.minecraft.block.enums.BlockHalf;
 import net.minecraft.block.enums.DoorHinge;
 import net.minecraft.block.enums.DoubleBlockHalf;
@@ -1014,10 +1015,10 @@ public final class Orientation {
             return false;
         }
         if (block instanceof WallBlock) {
-            if (direction == NZ) return state.get(WallBlock.WEST_WALL_SHAPE) != WallShape.NONE;
-            if (direction == PZ) return state.get(WallBlock.EAST_WALL_SHAPE) != WallShape.NONE;
-            if (direction == ZN) return state.get(WallBlock.NORTH_WALL_SHAPE) != WallShape.NONE;
-            if (direction == ZP) return state.get(WallBlock.SOUTH_WALL_SHAPE) != WallShape.NONE;
+            if (direction == NZ) return state.get(Properties.WEST_WALL_SHAPE) != WallShape.NONE;
+            if (direction == PZ) return state.get(Properties.EAST_WALL_SHAPE) != WallShape.NONE;
+            if (direction == ZN) return state.get(Properties.NORTH_WALL_SHAPE) != WallShape.NONE;
+            if (direction == ZP) return state.get(Properties.SOUTH_WALL_SHAPE) != WallShape.NONE;
             return false;
         }
         if (block instanceof FenceGateBlock) {

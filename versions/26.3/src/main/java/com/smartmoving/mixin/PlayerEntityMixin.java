@@ -72,6 +72,17 @@ public abstract class PlayerEntityMixin implements SmartMovingPlayer {
         }
     }
 
+    /**
+     * 원작 wouldIsSneaking: 슬라이딩·활공 중에는 Shift 를 누르고 있어도 웅크리기로 치지 않는다.
+     * 바닐라는 웅크리면 턱 끝에서 멈추게 하는데, 그러면 슬라이딩하다 턱에서 떨어져 활공으로 넘어갈 수 없다 (여우 무빙).
+     */
+    @Inject(method = "isStayingOnGroundSurface", at = @At("RETURN"), cancellable = true)
+    private void smartmoving$noLedgeStopWhileSliding(CallbackInfoReturnable<Boolean> cir) {
+        if (smartmoving$state.sliding || smartmoving$state.headJumping) {
+            cir.setReturnValue(false);
+        }
+    }
+
     @Inject(method = "tick", at = @At("TAIL"))
     private void smartmoving$tick(CallbackInfo ci) {
         Player self = (Player) (Object) this;

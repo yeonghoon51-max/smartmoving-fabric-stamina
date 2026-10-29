@@ -200,10 +200,14 @@ public final class ClientMovementController {
             state.aerodynamic = true;
         }
 
-        // 슬라이딩 시작: 달리면서 잡기 + 웅크리기
-        boolean sprintingNow = state.fast || state.wasFast;
-        boolean runningNow = state.running || state.wasRunning;
-        if (cfg.enableSliding && in.grab() && onGround && (sprintingNow || runningNow)
+        // 슬라이딩 시작: 달리면서 잡기 + 웅크리기.
+        // 원작은 "지난 틱에 땅에서 달리고 있었나"(isGroundSprinting)를 본다. 그래서 점프한 바로 다음 틱에
+        // 웅크리기를 누르면 공중에서도 슬라이딩이 시작되어 점프 속도에 슬라이딩 부스트가 더해지고,
+        // 떨어지기 시작하면 활공으로 바뀐다. 이것이 여우 무빙이다.
+        boolean groundSprintingLastTick = state.wasFast;
+        boolean sprintingNow = groundSprintingLastTick || (onGround && state.fast);
+        boolean runningNow = onGround && (state.running || state.wasRunning);
+        if (cfg.enableSliding && in.grab() && (sprintingNow || runningNow)
                 && !state.crawling && in.sneakStart() && !player.isInWater()) {
             // 원작처럼 지침 때문에 부스트가 실패해도 슬라이딩 자체는 시작한다.
             Jumps.tryJump(player, state, JumpType.SLIDE_DOWN,
@@ -344,7 +348,8 @@ public final class ClientMovementController {
                                       Input in, boolean onGround, boolean standing) {
         if (state.climbing) return;
 
-        boolean jump = onGround && in.jump();
+        // 원작: 슬라이딩·기어가기 중에는 점프하지 않는다
+        boolean jump = onGround && in.jump() && !state.sliding && !state.crawling;
         // 원작 wouldIsSneaking: 달리기 키나 잡기와 함께 누르면 웅크리기가 아니다
         boolean sneaking = in.sneak() && !in.sprint() && !(cfg.enableCrawling && in.grab())
                 && !state.sliding && !state.headJumping && !state.crawling;

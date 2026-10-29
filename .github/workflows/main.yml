@@ -1,39 +1,50 @@
-name: CI
+name: Build
 
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # 마인크래프트 버전마다 독립된 Gradle 프로젝트(versions/<버전>)를 따로 빌드한다.
     strategy:
+      fail-fast: false
       matrix:
-        variant: [stub, full]
+        include:
+          - mc: '1.20.1'
+            java: '21'
+          - mc: '1.21.8'
+            java: '21'
+          - mc: '26.3'
+            java: '25'
+    name: build (${{ matrix.mc }})
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: versions/${{ matrix.mc }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK
+      - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
-          cache: gradle
+          java-version: ${{ matrix.java }}
 
-      - name: Build (stubbed offline)
-        if: matrix.variant == 'stub'
-        uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: 8.7
-          arguments: build -PuseStubDeps=true -DuseStubLoom=true --offline --no-daemon --console=plain
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Build (full dependencies)
-        if: matrix.variant == 'full'
-        uses: gradle/gradle-build-action@v3
+      - name: Build
+        run: ./gradlew build --no-daemon --stacktrace
+
+      - name: Upload mod jar
+        uses: actions/upload-artifact@v4
         with:
-          gradle-version: 8.7
-          arguments: build --no-daemon --console=plain
+          name: smartmoving-fabric-${{ matrix.mc }}
+          path: versions/${{ matrix.mc }}/build/libs/*.jar
+          if-no-files-found: error

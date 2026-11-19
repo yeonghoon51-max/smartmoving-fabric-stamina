@@ -51,18 +51,12 @@ Divisor의 **Smart Moving** (Forge/ModLoader, 마지막 버전 16.3 for MC 1.8.9
 
 - Ctrl 을 누른 채 스페이스를 누르면 헤드 점프라서 스페이스를 **뗄 때** 뜁니다. 오래 누를수록 높이 떠서 활공이 길어집니다 (아주 짧게 누르면 거의 수평이라 뜨지 않습니다).
 - 스페이스를 뗀 뒤 **0.2초(4틱) 안에** Shift 를 누르면 됩니다. 원작은 딱 1틱(0.05초)이었습니다. `config/smartmoving.json` 의 `foxMoveGraceTicks` 를 `1` 로 바꾸면 원작과 같아집니다. 스페이스를 떼기 전에 누르면 땅에서 슬라이딩만 됩니다.
-- 원작은 지침이 35를 넘으면 달리기 점프가 막혀서 조금만 달려도 여우 무빙이 안 됐습니다. 이 포트는 지침을 기본으로 꺼 두었습니다 (아래 참고).
+- 원작은 지침이 35를 넘으면 달리기 점프가 막혀서 조금만 달려도 여우 무빙이 안 됐습니다. 이 포트에는 지침(스태미나)이 없습니다 (아래 참고).
 - 땅에서 슬라이딩하는 중에는 원작처럼 점프가 안 됩니다. 슬라이딩하다 턱에서 떨어져도 활공으로 바뀝니다.
 
-### 지침 (원작 exhaustion)
+### 지침 (원작 exhaustion) — 제거됨
 
-**기본으로 꺼져 있습니다.** 켜려면 `config/smartmoving.json` 에서 `"enableExhaustion": true` 로 바꾸세요. 켜면 원작처럼 동작합니다.
-
-행동하면 올라가고 쉬면 내려갑니다. 배고픔 줄 위에 **번개 아이콘**으로 남은 체력이 표시됩니다.
-
-- 행동마다 "이 값 이하일 때만 시작"과 "이 값을 넘으면 중단" 기준이 따로 있습니다. 회색 번개는 지금 하려는 행동에 필요한 만큼을 나타냅니다.
-- 회복 속도는 가만히 서 있을 때 2배, 공중에서 2.5배이고 달리는 중에는 회복되지 않습니다.
-- 배고픔이 4칸 이하면 회복되지 않습니다.
+원작에는 행동할수록 쌓이는 지침(스태미나)이 있어서, 배고픔 줄 위의 **번개 아이콘**이 줄어들면 달리기·점프·슬라이딩이 막혔습니다. 이 포트에서는 **지침을 완전히 뺐습니다.** 번개 아이콘도 나오지 않고, 아무리 오래 달리고 뛰어도 지쳐서 막히는 일이 없습니다.
 
 모아 뛰기와 헤드 점프 충전량은 체력 줄 위에 **파란 다이아**로 표시됩니다.
 
@@ -77,7 +71,7 @@ Divisor의 **Smart Moving** (Forge/ModLoader, 마지막 버전 16.3 for MC 1.8.9
 
 ## 설정
 
-처음 실행하면 `config/smartmoving.json`이 생깁니다. 각 기능 on/off, 지침 수치, 점프 배율 등을 바꿀 수 있습니다.
+처음 실행하면 `config/smartmoving.json`이 생깁니다. 각 기능 on/off, 점프 배율 등을 바꿀 수 있습니다.
 기본값은 원작의 기본 설정과 같고, 각 항목 옆 주석에 원작 설정 키 이름을 적어 두었습니다.
 
 ## 멀티플레이
@@ -118,7 +112,7 @@ src/main/java/com/smartmoving/        (서버+클라이언트 공용)
   logic/SmartFlying.java              원작 비행 (원작 handleAlternativeFlying)
   logic/MoveFlying.java               보는 방향으로 가속 (원작 moveFlying)
   logic/Jumps.java                    원작 tryJump 포트 (모든 점프 공식)
-  logic/Exhaustion.java               원작 지침 계산
+  logic/Exhaustion.java               원작 지침 계산 (이 포트에서는 꺼져 있음)
   network/                            클라이언트↔서버 상태 동기화 패킷
   mixin/PlayerEntityMixin.java        자세 강제, 수영·비행 가로채기, 벽 잡을 때 낙하 대미지
   mixin/LivingEntityMixin.java        travel 가로채기, 바닐라 점프 대체, 달리기 속도, 헤드 착지 대미지
@@ -126,7 +120,7 @@ src/main/java/com/smartmoving/        (서버+클라이언트 공용)
 src/client/java/com/smartmoving/client/ (클라이언트 전용)
   SmartMovingClient.java              진입점 (키, HUD, 패킷 수신)
   ClientMovementController.java       키 입력 → 상태 결정 (핵심 로직)
-  ExhaustionHud.java                  원작 HUD (번개 = 지침, 다이아 = 점프 충전)
+  ExhaustionHud.java                  원작 HUD (다이아 = 점프 충전, 지침 번개는 표시 안 함)
   ClimbCrawling.java                  틈으로 기어 오르기 / 기어서 턱 오르기
   SmartAnimations.java                원작 Smart Render 애니메이션 공식
   mixin/ClientPlayerEntityMixin.java  매 틱 컨트롤러 호출, 지치면 달리기 금지

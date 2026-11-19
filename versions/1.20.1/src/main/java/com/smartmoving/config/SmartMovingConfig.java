@@ -49,8 +49,7 @@ public class SmartMovingConfig {
     public float sprintFactor = 1.5f;
 
     // ---- 지침(exhaustion): 0에서 시작해 행동하면 올라가고, 쉬면 내려간다 ----
-    /** 기본 꺼짐 (원작 기본값은 켜짐). 켜면 지침이 쌓일수록 달리기·점프·슬라이딩이 막힌다. */
-    public boolean enableExhaustion = false;
+    // 이 포트는 지침(스태미나)을 쓰지 않는다. 아래 값들은 원작 기록용으로만 남아 있다.
     /** 달리기 중 틱당 증가량 (move.exhaustion.sprint.gain.factor) */
     public float sprintExhaustionGain = 2f;
     /** 이 값 이하일 때만 달리기 시작 가능 (move.exhaustion.sprint.start) */
@@ -205,10 +204,6 @@ public class SmartMovingConfig {
         }
         if (config == null) {
             config = new SmartMovingConfig();
-        }
-        if (config.configVersion < 2) {
-            // 2: 지침(스태미나)을 기본으로 끈다. 예전 파일에 남아 있는 켜짐 값도 끈다.
-            config.enableExhaustion = false;
         }
         config.configVersion = CURRENT_CONFIG_VERSION;
         // 새 버전에서 추가된 항목도 파일에 써 두기 위해 항상 다시 저장한다.

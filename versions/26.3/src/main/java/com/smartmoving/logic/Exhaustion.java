@@ -12,8 +12,9 @@ public final class Exhaustion {
     private Exhaustion() {
     }
 
+    /** 지침(스태미나)은 이 포트에서 제거됐다. 달리기·점프·슬라이딩·벽 타기가 지침 때문에 막히지 않는다. */
     public static boolean enabled() {
-        return SmartMoving.CONFIG.enableExhaustion;
+        return false;
     }
 
     /** 이 행동을 시작/계속할 수 있는지 확인하고, HUD 에 표시할 기준선을 기록한다. */

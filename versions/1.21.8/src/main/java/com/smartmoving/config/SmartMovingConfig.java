@@ -20,11 +20,21 @@ import java.nio.file.Path;
  */
 public class SmartMovingConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    /** 기본값을 바꾼 버전에서 예전 설정 파일을 고쳐 쓰기 위한 번호 */
+    private static final int CURRENT_CONFIG_VERSION = 2;
+
+    /** 이 파일을 쓴 설정 버전 (손대지 마세요) */
+    public int configVersion = 0;
 
     // ---- 기능 on/off ----
     public boolean enableClimbing = true;       // move.climb.free
     public boolean enableCrawling = true;       // move.crawl
     public boolean enableSliding = true;        // move.slide
+    /**
+     * 여우 무빙: 땅에서 달리다 뜬 뒤 이 틱 수 안에 Shift 를 누르면 공중에서 슬라이딩이 시작된다.
+     * 원작은 1 (0.05초). 기본은 4 (0.2초)로 넉넉하게 둔다.
+     */
+    public int foxMoveGraceTicks = 4;
     public boolean enableChargedJump = true;    // move.jump.charge
     public boolean enableHeadJump = true;       // move.jump.head.charge
     public boolean enableSprint = true;         // move.sprint
@@ -39,7 +49,8 @@ public class SmartMovingConfig {
     public float sprintFactor = 1.5f;
 
     // ---- 지침(exhaustion): 0에서 시작해 행동하면 올라가고, 쉬면 내려간다 ----
-    public boolean enableExhaustion = true;
+    /** 기본 꺼짐 (원작 기본값은 켜짐). 켜면 지침이 쌓일수록 달리기·점프·슬라이딩이 막힌다. */
+    public boolean enableExhaustion = false;
     /** 달리기 중 틱당 증가량 (move.exhaustion.sprint.gain.factor) */
     public float sprintExhaustionGain = 2f;
     /** 이 값 이하일 때만 달리기 시작 가능 (move.exhaustion.sprint.start) */
@@ -195,6 +206,11 @@ public class SmartMovingConfig {
         if (config == null) {
             config = new SmartMovingConfig();
         }
+        if (config.configVersion < 2) {
+            // 2: 지침(스태미나)을 기본으로 끈다. 예전 파일에 남아 있는 켜짐 값도 끈다.
+            config.enableExhaustion = false;
+        }
+        config.configVersion = CURRENT_CONFIG_VERSION;
         // 새 버전에서 추가된 항목도 파일에 써 두기 위해 항상 다시 저장한다.
         try (Writer writer = Files.newBufferedWriter(path)) {
             GSON.toJson(config, writer);

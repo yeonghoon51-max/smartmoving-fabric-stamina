@@ -122,6 +122,7 @@ public final class ClientMovementController {
     private static void tickSprint(LocalPlayer player, SmartMovingState state, SmartMovingConfig cfg,
                                    Input in, boolean onGround, boolean special) {
         state.wasFast = state.fast;
+        state.ticksSinceGroundSprint = state.wasFast ? 1 : Math.min(state.ticksSinceGroundSprint + 1, 1000);
         state.wasRunning = state.running;
 
         if (!onGround && state.wasFast && !state.climbing) state.sprintJump = true;
@@ -204,7 +205,8 @@ public final class ClientMovementController {
         // 원작은 "지난 틱에 땅에서 달리고 있었나"(isGroundSprinting)를 본다. 그래서 점프한 바로 다음 틱에
         // 웅크리기를 누르면 공중에서도 슬라이딩이 시작되어 점프 속도에 슬라이딩 부스트가 더해지고,
         // 떨어지기 시작하면 활공으로 바뀐다. 이것이 여우 무빙이다.
-        boolean groundSprintingLastTick = state.wasFast;
+        // 원작은 딱 1틱만 받아 줬지만, 여기서는 foxMoveGraceTicks 틱 안이면 받아 준다.
+        boolean groundSprintingLastTick = state.ticksSinceGroundSprint <= Math.max(1, cfg.foxMoveGraceTicks);
         boolean sprintingNow = groundSprintingLastTick || (onGround && state.fast);
         boolean runningNow = onGround && (state.running || state.wasRunning);
         if (cfg.enableSliding && in.grab() && (sprintingNow || runningNow)
@@ -215,6 +217,8 @@ public final class ClientMovementController {
             state.sliding = true;
             state.headJumping = false;
             state.aerodynamic = false;
+            // 같은 달리기로 슬라이딩 부스트를 여러 번 받지 못하게 한다.
+            state.ticksSinceGroundSprint = 1000;
             player.setSprinting(false);
         }
 

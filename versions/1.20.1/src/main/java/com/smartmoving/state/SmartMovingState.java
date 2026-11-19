@@ -66,6 +66,8 @@ public class SmartMovingState {
     /** 원작의 isFast: 달리기 키를 누르고 달리는 중 */
     public boolean fast;
     public boolean wasFast;
+    /** 마지막으로 땅에서 달린 뒤 지난 틱 수 (1 = 지난 틱) */
+    public int ticksSinceGroundSprint = 1000;
     /** 원작의 isRunning: 달리기 키 없이(W 두 번) 달리는 중 */
     public boolean running;
     public boolean wasRunning;
